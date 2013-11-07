@@ -167,6 +167,12 @@ then
 	# Create a clause.
 	for WHERE_TERM in ${CLAUSE[@]}
 	do
+echo $WHERE_TERM
+	done
+
+	# Create a clause.
+	for WHERE_TERM in ${CLAUSE[@]}
+	do
 		# Get rid of backslashes.
 		[[ "$WHERE_TERM" =~ '\' ]] && WHERE_TERM="$(echo "$WHERE_TERM" | sed 's/\\//')"
 
