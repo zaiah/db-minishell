@@ -61,9 +61,11 @@ break_maps_by_delim() {
 # Die if no arguments received.
 [ -z $BASH_ARGV ] && printf "Nothing to do\n" && usage 1
 
+
 # Array
 declare -a WHERE_CLAUSE 
 declare -a NOT_CLAUSE 
+
 
 # Process options.
 while [ $# -gt 0 ]
@@ -104,15 +106,16 @@ do
          shift
          THAT="$1"
       ;;
-     -n|--not)
-         DO_WHERE=true
-         shift
-         CLAUSE[${#CLAUSE[@]}]="$1"
-      ;;
      -w|--where)
          DO_WHERE=true
          shift
-         CLAUSE[${#CLAUSE[@]}]="$1"
+			if [[ "$1" =~ "|" ]]
+			then
+				printf "This argument can't have a pipe character (|)."
+				usage 1
+			fi
+			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
+     #    CLAUSE[${#CLAUSE[@]}]="$1"
       ;;
      -r|--remove)
          DO_REMOVE=true
@@ -145,6 +148,7 @@ do
 shift
 done
 
+
 # select
 if [ ! -z $DO_SELECT ]
 then
@@ -164,22 +168,65 @@ then
 	# !~: NOT LIKE
 	__TERMS__=( '=' '!=' '!~' '>' '<' '~' )
 
-	# Create a clause.
-	for WHERE_TERM in ${CLAUSE[@]}
-	do
-echo $WHERE_TERM
-	done
+
+	# description
+	# srv_path
+	# id
+	# instance
+
+
+	# Use a '|' to mark the arguments.
+#	echo Bash length: ${#CLAUSE}
+#	echo Actual length: 
+#	echo -n "${CLAUSE}" | wc -c 
+	declare -a __CHOP_CLAUSE__
+	__CHOP_CLAUSE__[0]=0	 			# Always save the first position.
+
+	# If it's one term, we can speed it up by just running a check for the |
+	if [[ "$CLAUSE" =~ '|' ]]
+	then
+		for __C__ in $(seq 0 "${#CLAUSE}")
+		do
+			[[ ${CLAUSE:$__C__:1} == "|" ]] && \
+				__CHOP_CLAUSE__[${#__CHOP_CLAUSE__[@]}]=$__C__ 
+		done
+	fi
+	__CHOP_CLAUSE__[${#__CHOP_CLAUSE__[@]}]=${#CLAUSE}
+
 
 	# Create a clause.
-	for WHERE_TERM in ${CLAUSE[@]}
+	CC_COUNT=1
+	for __DD__ in ${__CHOP_CLAUSE__[@]}
 	do
+		# Break if we've reached the end.
+		[ $__DD__ == ${#CLAUSE} ] && break
+
+		# Get more creative...
+		if [ ! $__DD__ == 0 ] 
+		then
+			# Define a term.
+			#echo ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ 
+			__DD__=$(( $__DD__ + 1 )) # Cut the char.
+			__EE__=$(( ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ ))
+			WHERE_TERM=${CLAUSE:$__DD__:$__EE__}
+		else
+			#echo ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ 
+			__EE__=$(( ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ ))
+			WHERE_TERM=${CLAUSE:$__DD__:$__EE__}
+		fi
+	
+		# Incremenet again.
+		# echo Clause: $WHERE_TERM
+		CC_COUNT=$(( $CC_COUNT + 1 ))
+
 		# Get rid of backslashes.
-		[[ "$WHERE_TERM" =~ '\' ]] && WHERE_TERM="$(echo "$WHERE_TERM" | sed 's/\\//')"
+		[[ "$WHERE_TERM" =~ '\' ]] && \
+			WHERE_TERM="$(echo "$WHERE_TERM" | sed 's/\\//')"
 
 		# Find the first non-alpha character in the string 
 		# Must localize every string.
-		echo Clause length: ${#WHERE_TERM}
-exit
+		# echo Clause length: ${#WHERE_TERM}
+		# echo Clause: $WHERE_TERM
 		for __CHAR__ in `seq 0 ${#WHERE_TERM}`
 		do
 			# Characters.
@@ -201,28 +248,36 @@ exit
 					( [[ ${CHAR_2} == '~' ]] || [[ ${CHAR_2} == '=' ]] )
 				then
 					FIRST_TERM="${CHAR_1}${CHAR_2}"
+					__KEY__=${WHERE_TERM:0:$(( $__CHAR__ + 1 ))}
+					__VALUE__=${WHERE_TERM:$(( $__CHAR__ + 2 )):${#WHERE_TERM}}
 					break
 				else	
 					FIRST_TERM=$CHAR_1
+					__KEY__=${WHERE_TERM:0:$(( $__CHAR__ + 1 ))}
+					__VALUE__=${WHERE_TERM:$(( $__CHAR__ + 1 )):${#WHERE_TERM}}
 					break
 				fi
 			fi
+
+			# I think you need to break if your term is not found.
 		done
+echo $__KEY__
+echo $__VALUE__
 
 		# Catch the end of the term (because we'll have to convert it).
 
 		# Need to find the first match of each of the above and evaluate that way.
 		case "$FIRST_TERM" in
-			'=') __TERM__="$(printf "$WHERE_TERM" | sed 's/=/ = /')";; 	# Awk is a better idea for this.
-			'>') __TERM__="$(printf "$WHERE_TERM" | sed 's/>/ > /')";;
-			'<') __TERM__="$(printf "$WHERE_TERM" | sed 's/</ < /')";;
-			'~') __TERM__="$(printf "$WHERE_TERM" | sed 's/~/ LIKE /')";;
-			'!=') __TERM__="$(printf "NOT $WHERE_TERM" | sed 's/!=/ = /')";;
-			'!~') __TERM__="$(printf "NOT $WHERE_TERM" | sed 's/!~/ LIKE /')";;
+			'=') 	__KEY__="$(printf "$__KEY__" | sed 's/=/ = /')";; 
+			'>') 	__KEY__="$(printf "$__KEY__" | sed 's/>/ > /')";;
+			'<')  __KEY__="$(printf "$__KEY__" | sed 's/</ < /')";;
+			'~')  __KEY__="$(printf "$__KEY__" | sed 's/~/ LIKE /')";;
+			'!=') __KEY__="$(printf "NOT $__KEY__" | sed 's/!=/ = /')";;
+			'!~') __KEY__="$(printf "NOT $__KEY__" | sed 's/!~/ LIKE /')";;
 		esac
 
-echo $__TERM__
-exit
+echo $__KEY__ $__VALUE__
+continue
 		# Encapsulate strings.
 		# convert() should do it.
 
@@ -230,9 +285,6 @@ exit
 		[ -z "$CLAUSE" ] && CLAUSE="$(echo "$WHERE_TERM" sed 's/=/ = /')"
 		[ ! -z "$CLAUSE" ] && CLAUSE="$CLAUSE AND $(echo "$WHERE_TERM" sed 's/=/ = /')" 
 	done 
-
-	# Echo the clause.
-	echo $CLAUSE
 
 exit
 	# Consider writing something to prepare the clause (begin with space, then WHERE, and end with ';')
