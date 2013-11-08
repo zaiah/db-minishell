@@ -23,10 +23,9 @@ SQLITE="/usr/bin/sqlite3"
 usage() {
    STATUS="${1:-0}"
    echo "Usage: ./${PROGRAM}
-	[ -csfiuewrxzbdvh ]
+	[ - ]
 
--b | --between <arg>          Use the BETWEEN clause.
-                              Format: <col>=<min>-<max>
+Read functions:
 -c | --columns <arg>          List the columns in a table <arg>. 
 -s | --select <arg>           Select columns from a table. 
      --distinct <arg>         Select distinct rows from a table. 
@@ -34,20 +33,26 @@ usage() {
      --offset <arg>           Use an offset when using the limit.
      --having <arg>           Having ?
      --order-by [asc|desc]    Order the rows.
+-b | --between <arg>          Use the BETWEEN clause.
+                              Format: <col>=<min>-<max>
 -f | --from <arg>             If \$__TABLE not set, set this to choose a
                               table to use in a SELECT statement.
+-w | --where <arg>            Supply a clause to tune result set. 
+-z | --id <arg>               Affect an id or ids. 
+-d | --database <arg>         Choose a database to work with. 
+
+
+Update Functions:
 -i | --write <arg>            Commit records in <arg> to database. 
 -u | --update <arg>           If \$__TABLE not set, set this to choose a
                               table to use in an UPDATE statement.
 -e | --set <arg>              Set <column> = <value>
--w | --where <arg>            Supply a clause to tune result set. 
 -r | --remove                 Remove entry or entries depending on clause. 
      --delete                 Synonym for --remove
 -x | --remove-where <arg>     Remove entry or entries depending on <arg>.
-     --delete-where <arg>     Allows specification of clause from here.
--z | --id <arg>               Affect an id or ids. 
--b | --between <arg>          Affect records between range.
--d | --database <arg>         Choose a database to work with. 
+     --delete-where <arg>     Synonym for --remove
+
+General Options:
 -v | --verbose                Be verbose in output.
 -h | --help                   Show this help and quit.
 "
@@ -418,25 +423,6 @@ assemble_clause() {
 }
 
 
-#-----------------------------------------------------#
-# die_on_char_recvd() 
-#
-# Die when a particular character is received.
-#-----------------------------------------------------#
-die_on_char_recvd() {
-	if [ -z "$1" ] || [ -z "$2" ]
-	then 
-		echo "Characters not received.\nExiting." >> /dev/stderr
-	fi
-
-	if [[ "$1" =~ "$2" ]]
-	then
-		printf "This argument can't receive a '$2' character."
-		exit 1
-	fi 
-}
-
-
 # Die if no arguments received.
 [ -z "$BASH_ARGV" ] && printf "Nothing to do\n" && usage 1
 
@@ -570,6 +556,22 @@ fi
 # spit out a library of this with needed functionality. 
 if [ ! -z $DO_LIBRARIFY ]
 then
+# exclude
+# - database 
+# - verbose
+# - help
+# 
+# No $PROGRAM var
+# BINDIR, SELF, SQLITE, etc.
+# usage
+# break_list_by_delim, break_maps_by_delim
+# UPDATE convert()
+#
+# Die if no argument received.
+# die=usage or die=exit
+#
+# localize your shit...
+# and of course encapsulate.
    echo '...'
 fi
 
@@ -594,6 +596,7 @@ then
 	# write
 	if [ ! -z $DO_WRITE ]
 	then
+		# I'm converting from variables to column names here.
  		echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES (  )"
 	fi
 
@@ -606,7 +609,7 @@ then
 		# Handle LIMIT, ORDER BY
 
 		# Select all the records asked for.
- 		echo $SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
+ 		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
 	fi
 
 	# update
@@ -614,14 +617,14 @@ then
 	then
 		# Compound your SET statements, same rules apply as in regular statment
 		assemble_set
- 		echo $SQLITE $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
+ 		$SQLITE $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
 	fi
 
 
 	# remove
 	if [ ! -z $DO_REMOVE ]
 	then
+ 		#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
  		$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
- 		echo $SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
 	fi
 fi # END [ DO_SEND_QUERY ]
