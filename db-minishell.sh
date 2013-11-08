@@ -10,19 +10,23 @@ PROGRAM="db-minishell"
 BINDIR="$(dirname "$(readlink -f $0)")"
 SELF="$(readlink -f $0)"
 
+
 # Other vars
 FIRST_TERM=
 __KEY__=
 __VALUE__=
 SQLITE="/usr/bin/sqlite3"
 
+
 # usage() - Show usage message and die with $STATUS
 # -y | --datatypes <arg>        List the column datatypes in a table <arg>. 
 usage() {
    STATUS="${1:-0}"
    echo "Usage: ./${PROGRAM}
-	[ - ]
+	[ -csfiuewrxzbdvh ]
 
+-b | --between <arg>          Use the BETWEEN clause.
+                              Format: <col>=<min>-<max>
 -c | --columns <arg>          List the columns in a table <arg>. 
 -s | --select <arg>           Select columns from a table. 
      --distinct <arg>         Select distinct rows from a table. 
@@ -305,6 +309,8 @@ assemble_clause() {
 	# Build the statement.
 
 	# If it's one term, we can speed it up by just running a check for the |
+	if [ ! -z "$CLAUSE" ]
+	then
 	if [[ "$CLAUSE" =~ '|' ]]
 	then
 		# Using a '|' to mark the arguments, chop up our string accordingly.
@@ -362,29 +368,46 @@ assemble_clause() {
 		# Build/append to the clause.
 		STMT="WHERE $__KEY__ $(convert "$__VALUE__")" 
 	fi # [[ $CLAUSE =~ '|' ]]
+	fi
 
 
 	# Also check for ...
 	# ...LIMIT 
+	# Case statements allow you to tune the lang more.
+
+	# Test for empty string, (but how?)
+
+	# BETWEEN 
+	if [ ! -z $__BETWEEN ] 
+	then
+		BETWEEN_COL=${__BETWEEN%%=*}
+		BETWEEN_VAL=${__BETWEEN##*=}
+		[ -z "$STMT" ] && STMT="WHERE $BETWEEN_COL BETWEEN ${BETWEEN_VAL%%-*} AND ${BETWEEN_VAL##*-}" || \
+			STMT=" ${STMT} BETWEEN $__BETWEEN"
+	fi
+
+	# LIMIT  
 	if [ ! -z $__LIM ] 
 	then
 		[ -z "$STMT" ] && STMT="LIMIT $__LIM" || STMT=" ${STMT} LIMIT $__LIM"
+	fi
 
 	# ... ORDER BY
-	elif [ ! -z $__ORDER_BY ]
+	if [ ! -z $__ORDER_BY ]
 	then
 		[ -z "$STMT" ] && STMT="ORDER BY $__ORDER_BY" || STMT=" ${STMT} ORDER BY $__ORDER_BY"
+	fi
 
 	# ... HAVING
-	elif [ ! -z $__HAVING ]
+	if [ ! -z $__HAVING ]
 	then
 		[ -z "$STMT" ] && STMT="HAVING $__ORDER_BY" || STMT=" ${STMT} HAVING $__ORDER_BY"
+	fi
 
 	# ... GROUP BY
-	elif [ ! -z $__GROUP_BY ]
+	if [ ! -z $__GROUP_BY ]
 	then
 		[ -z "$STMT" ] && STMT="GROUP BY $__ORDER_BY" || STMT=" ${STMT} GROUP BY $__ORDER_BY"
-	
 	fi
 
 	# Prepare the clause (begin with space, then WHERE, and end with ';')
@@ -427,6 +450,11 @@ declare -a NOT_CLAUSE
 while [ $# -gt 0 ]
 do
    case "$1" in
+     -b|--between)
+			shift
+			__BETWEEN="$1"
+		;;
+
      -c|--columns)
          DO_GET_COLUMNS=true
 			shift
@@ -566,12 +594,11 @@ then
 	# write
 	if [ ! -z $DO_WRITE ]
 	then
- 		$SQLITE $DB ".schema ${__TABLE}"
  		echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES (  )"
 	fi
 
 	# By this point, this program needs to check for and craft a clause.
-	assemble_clause
+	[ ! -z "$CLAUSE" ] || [ ! -z "$__BETWEEN" ] && assemble_clause
 
 	# select
 	if [ ! -z $DO_SELECT ]
@@ -579,7 +606,7 @@ then
 		# Handle LIMIT, ORDER BY
 
 		# Select all the records asked for.
- 		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
+ 		echo $SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
 	fi
 
 	# update
@@ -594,7 +621,7 @@ then
 	# remove
 	if [ ! -z $DO_REMOVE ]
 	then
+ 		$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
  		echo $SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
 	fi
 fi # END [ DO_SEND_QUERY ]
-
