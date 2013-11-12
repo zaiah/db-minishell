@@ -507,12 +507,6 @@ do
 		# Serialization would save a ton of time....
 		# tables for bash
 
-		# Also insert stuff.
-		# columns_to_vars when there is one result.
-		# inserts
-		# insert_disregarding_blanks
-		# insert_fail_on_blanks
-
 #     -y|--types)
 #         DO_GET_COLUMN_TYPES=true
 #			shift
@@ -537,7 +531,7 @@ do
 			__TABLE="$1"
 		;; 
 
-	  --insert-from-mem)
+	  -im|--insert-from-mem)
          DO_SEND_QUERY=true
          DO_WRITE=true
 			DO_WRITE_FROM_MEM=true
@@ -729,21 +723,15 @@ then
 		fi
 	fi
 
-	# write
-	#
-	# insert
-	# columns_to_vars
-	# each value is loaded with it's default (?)
-
 	# 1. pull vars from current env (in shell script)
 	# e.g. RAM = ram, and reorganize so that query writes correctly...
 	# 2. pull vars from command line (with key=value pairs)
 	# ram=$RAM 
 	if [ ! -z $DO_WRITE ]
 	then
+		# Probably the preffered method.
 		if [ ! -z $DO_WRITE_FROM_MEM ]
 		then
-
 			# I'm converting from variables to column names here.
 			__INSTR__=
 			for col_name in $(get_columns) 
@@ -763,21 +751,27 @@ then
 				#__VARVAL__="\$$(echo ${col_name} | tr '[a-z]' '[A-Z]')"
 				__VARVAL__="\$(convert \"\$$(echo ${col_name}\" | tr '[a-z]' '[A-Z]'))"
 
-				# Convert each var.
+				# Create a INSERT string.
 				if [ -z "$__INSTR__" ]
 				then 
 					__INSTR__="$__VARVAL__" 
 					continue 
 				fi
+
+				# Append to an INSERT string.
 				__INSTR__="$__INSTR__, $__VARVAL__" 
 			done
 			
 			# Should probably be careful here.  
 			# Mostly just path stuff to worry about.
  			eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+
+		# Allow the ability to just craft your own.
 		else
+			# Use the same breakdown.
+
 			# I'm converting from variables to column names here.
- 			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $(get_columns) )"
+ 			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
 		fi
 	fi
 
