@@ -3,6 +3,30 @@
 # db-minishell
 #
 # Manages simple SQL queries via Bash.
+#
+# ---------
+# Licensing
+# ---------
+# 
+# Copyright (c) 2013 Vokayent
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 #-----------------------------------------------------#
 PROGRAM="db-minishell"
 
@@ -44,6 +68,8 @@ Read functions:
 
 Update Functions:
 -i | --write <arg>            Commit records in <arg> to database. 
+     --insert <arg>           Synonym for --write.
+     --insert-from-mem        Craft and commit statement from variables.
 -u | --update <arg>           If \$__TABLE not set, set this to choose a
                               table to use in an UPDATE statement.
 -e | --set <arg>              Set <column> = <value>
@@ -53,6 +79,10 @@ Update Functions:
      --delete-where <arg>     Synonym for --remove
 
 General Options:
+--librarify                   Create a library out of db-minishell for use
+                              within a shell script.
+--libname <name>              Create the library with a name <name>.
+--install <dir>               Install to a location. <dir> must be absolute.
 -v | --verbose                Be verbose in output.
 -h | --help                   Show this help and quit.
 "
@@ -60,10 +90,12 @@ General Options:
 }
 
 
+# CREATE_LIB
 #-----------------------------------------------------#
 # break_list_by_delim
 #
-# Creates an array based on a string containing delimiters.
+# Creates an array based on a string containing 
+# delimiters.
 #-----------------------------------------------------#
 # break-list - creates an array based on some set of delimiters.
 break_list_by_delim() {
@@ -75,12 +107,25 @@ break_list_by_delim() {
 #-----------------------------------------------------#
 # break_maps_by_delim
 #
-# Creates a key to value pair based on a string containing delimiters.
+# Creates a key to value pair based on a string 
+# containing delimiters.
 #-----------------------------------------------------#
 break_maps_by_delim() {
 	join="${2-=}"			# Allow for an alternate map marker.
 	local m=(`printf $1 | sed "s/${join}/ /g"`)
 	echo ${m[@]}			# Return the list all ghetto-style.
+}
+
+
+#-----------------------------------------------------#
+# get_columns()
+#
+# Get the columns of a table.
+#-----------------------------------------------------#
+get_columns() {
+ 	$SQLITE -header $DB "SELECT * FROM ${__TABLE} LIMIT 1" | \
+		head -n 1 | \
+		sed 's/|/ /g'	
 }
 
 
@@ -122,6 +167,7 @@ convert() {
 		 [[ ${1:0:1} == '+' ]] || \
 		 [[ ${1:0:1} == '/' ]] || \
 		 [[ ${1:0:1} == '\' ]] || \
+		 [[ ${1:0:1} == '.' ]] || \
 		 [[ ${1:0:1} == '-' ]] 
 		then
 			printf "'$1'"
@@ -424,7 +470,17 @@ assemble_clause() {
 
 
 # Die if no arguments received.
-[ -z "$BASH_ARGV" ] && printf "Nothing to do\n" && usage 1
+if [ -z $DO_LIBRARIFY ]
+then
+	# This will kill ksh
+	__EXIT__="usage"
+	[ -z "$BASH_ARGV" ] && printf "Nothing to do\n" && $__EXIT__ 1
+else
+	__EXIT__="exit"
+	[ $# -le 0 ] && $__EXIT__ 1		# Exit if no args given to library.
+	[ -z "$SQLITE" ] && SQLITE="$(which sqlite3)"  # Define SQLite if not.
+	LOGFILE="/dev/stderr"				# Set a log file.
+fi
 
 
 # Array
@@ -433,6 +489,7 @@ declare -a NOT_CLAUSE
 
 
 # Process options.
+# Can use a DO_LIB to evaluate which list to show...
 while [ $# -gt 0 ]
 do
    case "$1" in
@@ -446,32 +503,53 @@ do
 			shift
 			__TABLE="$1"
 		;;
+
+		# Serialization would save a ton of time....
+		# tables for bash
+
+		# Also insert stuff.
+		# columns_to_vars when there is one result.
+		# inserts
+		# insert_disregarding_blanks
+		# insert_fail_on_blanks
+
 #     -y|--types)
 #         DO_GET_COLUMN_TYPES=true
 #			shift
 #			__TABLE="$1"
 #		;;
+
      -s|--select)
          DO_SEND_QUERY=true
          DO_SELECT=true
          shift
          SELECT="$1"
       ;;
+
      -f|--from)
          DO_FROM=true
          shift
          __TABLE="$1"
       ;;
+
 	  -t|--into)
 			shift
 			__TABLE="$1"
 		;; 
+
+	  --insert-from-mem)
+         DO_SEND_QUERY=true
+         DO_WRITE=true
+			DO_WRITE_FROM_MEM=true
+	  ;;
+
      -i|--write|--insert)
          DO_SEND_QUERY=true
          DO_WRITE=true
          shift
          WRITE="$1"
       ;;
+
      -u|--update)
          DO_SEND_QUERY=true
          DO_UPDATE=true
@@ -483,8 +561,9 @@ do
          shift
 			if [[ "$1" =~ "|" ]]
 			then
-				printf "This argument can't have a pipe character (|)."
-				usage 1
+				[ -z $DO_LIBRARIFY ] && \
+					printf "This argument can't have a pipe character (|)."
+				$__EXIT__ 1
 			fi
 			[ -z "$SET" ] && SET="$1" || SET="$SET|$1"
       ;;
@@ -494,38 +573,70 @@ do
          shift
 			if [[ "$1" =~ "|" ]]
 			then
-				printf "This argument can't have a pipe character (|)."
-				usage 1
+				[ -z $DO_LIBRARIFY ] && \
+					printf "This argument can't have a pipe character (|)."
+				$__EXIT__ 1
 			fi
 			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
       ;;
+
      -r|--remove|--delete)
          DO_SEND_QUERY=true
          DO_REMOVE=true
       ;;
+
 	  -d|--database)
 			shift
 			DB="$1"
 		;;
+
      --id)
          DO_ID=true
          shift
          ID="$1"
       ;;
-	  -l|--librarify)
-			DO_LIBRARIFY=true
+
+		# I figured out how to do this...
+	  --install|--librarify|--libname|--verbose|--help)
+			if [ -z $DO_LIBRARIFY ]
+			then
+				case "$1" in
+				 --install)
+					  DO_INSTALL=true
+					  shift
+					  INSTALL_DIR=$1
+				  ;;
+
+				 --librarify)
+					  CREATE_LIB=true
+				  ;;
+
+				 -l|--libname)
+					  CREATE_LIB=true
+					  shift
+					  LIB_CRNAME="$1"		
+				  ;;
+
+				 -v|--verbose)
+					 VERBOSE=true
+				  ;;
+
+				 -h|--help)
+					 $__EXIT__ 0
+				  ;;
+				esac
+			else
+				break
+			fi
 		;;
-     -v|--verbose)
-        VERBOSE=true
-      ;;
-     -h|--help)
-        usage 0
-      ;;
-     --) break;;
+
+#     --) break;;
+
      -*)
       printf "Unknown argument received.\n";
-      usage 1
+      $__EXIT__ 1
      ;;
+
      *) break;;
    esac
 shift
@@ -535,44 +646,66 @@ done
 # get a column listing 
 if [ ! -z $DO_GET_COLUMNS ]
 then
-	[ -z "${__TABLE}" ] && echo "No table to operate on!" && usage 1
+	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
 
 	# Anywhere a __TABLE is present, check the first chars and make
 	# sure they're not flags.
- 	$SQLITE -header $DB "SELECT * FROM ${__TABLE} LIMIT 1" | \
-		head -n 1 | \
-		sed 's/|/ /g'	
+	get_columns
 fi
 
 
 # get a datatype listing 
 if [ ! -z $DO_GET_COLUMN_TYPES ]
 then
-	[ -z "${__TABLE}" ] && echo "No table to operate on!" && usage 1
+	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
  	$SQLITE $DB ".schema ${__TABLE}"
 fi
 
 
-# spit out a library of this with needed functionality. 
-if [ ! -z $DO_LIBRARIFY ]
+# Install
+if [ ! -z $DO_INSTALL ] 
 then
-# exclude
-# - database 
-# - verbose
-# - help
-# 
-# No $PROGRAM var
-# BINDIR, SELF, SQLITE, etc.
-# usage
-# break_list_by_delim, break_maps_by_delim
-# UPDATE convert()
-#
-# Die if no argument received.
-# die=usage or die=exit
-#
-# localize your shit...
-# and of course encapsulate.
-   echo '...'
+	if [ -f "$INSTALL_DIR/$(basename ${SELF%%.sh})" ] 
+	then
+		echo "$PROGRAM already is installed at $INSTALL_DIR"
+		$__EXIT__ 1
+	fi
+	[ -d "$INSTALL_DIR" ] && ln -s "$SELF" "$INSTALL_DIR/$(basename ${SELF%%.sh})"
+fi
+
+
+# spit out a library of this with needed functionality. 
+if [ ! -z $CREATE_LIB ] 
+then
+	# Find first instance of x 
+	# If nothing else is excluded, then just '# CREATE_LIB'
+	[ -z "$LIB_CRNAME" ] && LIB_CRNAME="db_minishell"
+
+	# Basic libstuff.
+	printf "${LIB_CRNAME}() {\n"
+	printf "\tDO_LIBRARIFY=true\n"
+
+	# Let's give some options to make certain things simpler.
+	# Like if we're just using one database.
+
+	# Or if we plan to only use one table.
+
+	# The term will change, but libraries and functions can be incldued
+	# on the fly with this.
+
+	# Beginning of our range.
+	CAT_START=$(( $(grep --line-number '# CREATE_LIB' $SELF | \
+		head -n 1 | \
+		awk -F ':' '{print $1}') + 1 ))
+
+	# End of our range.
+	CAT_END=$(wc -l $SELF | awk '{print $1}')
+
+	# Output the document.
+	sed -n ${CAT_START},${CAT_END}p $SELF
+
+	# Wrap last statement.
+	printf "\n}\n"
 fi
 
 
@@ -580,24 +713,72 @@ fi
 if [ ! -z $DO_SEND_QUERY ]
 then
 	# Make sure that we've actually asked for a clause.
-	if [ -z "$__TABLE" ] 
+	if [ -z "$DB" ] || [ -z "$__TABLE" ] 
 	then
 		if [ -z $DO_LIBRARIFY ] 
 		then
-			[ ! -z $DO_SELECT ] && NO_STMT_SPECIFIED="SELECT" 
-			[ ! -z $DO_DELETE ] && NO_STMT_SPECIFIED="DELETE FROM" 
-			[ ! -z $DO_INSERT ] && NO_STMT_SPECIFIED="INSERT INTO" 
-			[ ! -z $DO_UPDATE ] && NO_STMT_SPECIFIED="UPDATE" 
-			printf "Either no table or no columns specified in the ${NO_STMT_SPECIFIED} statement.\n"
-			usage 1
+			[ ! -z $DO_SELECT ] && [ -z "$SELECT" ] && NO_STMT_SPECIFIED="SELECT" 
+			[ ! -z $DO_REMOVE ] && [ -z "$CLAUSE" ] && NO_STMT_SPECIFIED="DELETE FROM" 
+			[ ! -z $DO_WRITE ] && NO_STMT_SPECIFIED="INSERT INTO" 
+			[ ! -z $DO_UPDATE ] && [ -z "$SET" ] && NO_STMT_SPECIFIED="UPDATE" 
+			printf "Either no database, no table or no columns specified in the ${NO_STMT_SPECIFIED} statement.\n"
+			$__EXIT__ 1
+		else
+			# No messages need to print.
+			$__EXIT__ 1
 		fi
 	fi
 
 	# write
+	#
+	# insert
+	# columns_to_vars
+	# each value is loaded with it's default (?)
+
+	# 1. pull vars from current env (in shell script)
+	# e.g. RAM = ram, and reorganize so that query writes correctly...
+	# 2. pull vars from command line (with key=value pairs)
+	# ram=$RAM 
 	if [ ! -z $DO_WRITE ]
 	then
-		# I'm converting from variables to column names here.
- 		echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES (  )"
+		if [ ! -z $DO_WRITE_FROM_MEM ]
+		then
+
+			# I'm converting from variables to column names here.
+			__INSTR__=
+			for col_name in $(get_columns) 
+			do
+				# Skip IDs, id,uid?
+				if [[ $col_name == "id" ]] || [[ $col_name == "uid" ]] 
+				then 
+					__INSTR__="null"
+					continue
+				fi
+
+				# If any of these are null, we should probably stop.
+				# Or at least come up with a way to specify what
+				# does not need a record.
+
+				# Get the var's value.
+				#__VARVAL__="\$$(echo ${col_name} | tr '[a-z]' '[A-Z]')"
+				__VARVAL__="\$(convert \"\$$(echo ${col_name}\" | tr '[a-z]' '[A-Z]'))"
+
+				# Convert each var.
+				if [ -z "$__INSTR__" ]
+				then 
+					__INSTR__="$__VARVAL__" 
+					continue 
+				fi
+				__INSTR__="$__INSTR__, $__VARVAL__" 
+			done
+			
+			# Should probably be careful here.  
+			# Mostly just path stuff to worry about.
+ 			eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+		else
+			# I'm converting from variables to column names here.
+ 			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $(get_columns) )"
+		fi
 	fi
 
 	# By this point, this program needs to check for and craft a clause.
