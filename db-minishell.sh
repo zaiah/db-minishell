@@ -149,6 +149,15 @@ convert() {
 # Chop a string based on positional parameters.
 #-----------------------------------------------------#
 chop_by_position() {
+}
+
+
+#-----------------------------------------------------#
+# chop_by_position 
+#
+# Chop a string based on positional parameters.
+#-----------------------------------------------------#
+chop_by_position() {
 	# My Term
 	__MY_TERM__="$1"
 
