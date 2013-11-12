@@ -729,6 +729,7 @@ then
 	# ram=$RAM 
 	if [ ! -z $DO_WRITE ]
 	then
+		# Write from global variables mapped to column names.
 		# Probably the preffered method.
 		if [ ! -z $DO_WRITE_FROM_MEM ]
 		then
@@ -737,7 +738,8 @@ then
 			for col_name in $(get_columns) 
 			do
 				# Skip IDs, id,uid?
-				if [[ $col_name == "id" ]] || [[ $col_name == "uid" ]] 
+				if [[ $col_name == "id" ]] || [[ $col_name == "uid" ]] || \ 
+					[[ $col_name == "ID" ]] || [[ $col_name == "UID" ]]
 				then 
 					__INSTR__="null"
 					continue
@@ -766,11 +768,64 @@ then
 			# Mostly just path stuff to worry about.
  			eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 
-		# Allow the ability to just craft your own.
+		# Allow the ability to craft a more standard INSERT own.
 		else
-			# Use the same breakdown.
+			# We break only by a comma, but we need to make 
+			# sure that said comma isn't within a text string. 
+#			unset __CHAR__
+#			__CHARCOUNT__=0
+#			declare -a __CHARPOS__
+#			__CHARPOS__[0]=0
+#				
+#			# Debug
+#			echo Length of \$WRITE: ${#WRITE}
+#
+#			# Move through the entire string.
+#			for __CHAR__ in `seq 0 "${#WRITE}"`
+#			do
+#				# Extract one character at a time.
+#				# I'm thinking I need a string find library.
+#				CHAR_1=${WRITE:$__CHARCOUNT__:1}
+#				CHAR_C=${#__CHARPOS__[@]}
+#
+#				# Get that character. 
+#				if [[ $CHAR_1 == "'" ]] || [[ $CHAR_1 == '"' ]] 
+#				then
+#					echo Quote found: $CHAR_1
+#					__CHARCOUNT__=$(( $__CHARCOUNT__ + 1 ))
+#					
+#					# Skip until we reach the end of the text delimiter.
+#					__STRENC__="$CHAR_1"
+#					while [[ ! ${WRITE:$__CHARCOUNT__:1} == $__STRENC__ ]]
+#					do
+#						__CHARCOUNT__=$(( $__CHARCOUNT__ + 1 ))
+#					done
+#			
+#					# Do yet another increment.
+#					# unset __STRENC__
+#				fi
+#
+#				# Save the comma.	
+#				if [[ $CHAR_1 == ',' ]] 
+#				then 
+#					echo $CHAR_C 
+#					__CHARPOS__[$CHAR_C]=$__CHARCOUNT__ 
+#					echo $__CHARCOUNT__
+#				fi
+#				__CHARCOUNT__=$(( $__CHARCOUNT__ + 1 ))
+#			done
 
-			# I'm converting from variables to column names here.
+			# Debug
+			# echo At pos: ${WRITE:35:1}
+			# echo ${#__CHARPOS__}
+
+			# Gonna need some pretty serious recursion.
+			# Check string first for "'" or '"'
+			#		If found, then check for the next one, and after a match find the next ','
+			# Check string for ","
+			# Writing this recursively would involve knowing where the string is...
+
+			# Just taking a command line dump here.
  			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
 		fi
 	fi
@@ -781,8 +836,6 @@ then
 	# select
 	if [ ! -z $DO_SELECT ]
 	then
-		# Handle LIMIT, ORDER BY
-
 		# Select all the records asked for.
  		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
 	fi
