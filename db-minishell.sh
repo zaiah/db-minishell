@@ -591,7 +591,7 @@ do
          ID="$1"
       ;;
 
-		# I figured out how to do this...
+	  # I figured out how to do this...
 	  --install|--librarify|--libname|--verbose|--help)
 			if [ -z $DO_LIBRARIFY ]
 			then
@@ -625,7 +625,7 @@ do
 			fi
 		;;
 
-#     --) break;;
+     --) break;;
 
      -*)
       printf "Unknown argument received.\n";
