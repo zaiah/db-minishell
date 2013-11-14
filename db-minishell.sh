@@ -63,7 +63,7 @@ Read functions:
                               table to use in a SELECT statement.
 -w | --where <arg>            Supply a WHERE clause to tune result set. 
 -o | --or <arg>               Supply an OR clause to tune result set. 
--z | --id <arg>               Affect an id or ids. 
+-z | --id <arg>               Retrieve only an id.
 -d | --database <arg>         Choose a database to work with. 
 -a | --as <arg>               Choose a serialization type.
 
@@ -80,6 +80,7 @@ Update Functions:
      --delete-where <arg>     Synonym for --remove
 
 General Options:
+--set-id <colname>            Set the id column name ('id' is default column name.)
 --librarify                   Create a library out of db-minishell for use
                               within a shell script.
 --libname <name>              Create the library with a name <name>.
@@ -624,10 +625,23 @@ do
 		;;
 
      --id)
+         DO_SEND_QUERY=true
          DO_ID=true
+			OR_X_AND[${#OR_X_AND[@]}]="and"
          shift
-         ID="$1"
+			if [[ "$1" =~ "|" ]]
+			then
+				[ -z $DO_LIBRARIFY ] && \
+					printf "This argument can't have a pipe character (|)."
+				$__EXIT__ 1
+			fi
+			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
       ;;
+
+		--set-id)
+         shift
+         ID_IDENTIFIER="$1"
+		;;
 
 	  # I figured out how to do this...
 	  --install|--librarify|--libname|--verbose|--help)
@@ -752,6 +766,7 @@ then
 		then
 			[ ! -z $DO_SELECT ] && [ -z "$SELECT" ] && NO_STMT_SPECIFIED="SELECT" 
 			[ ! -z $DO_REMOVE ] && [ -z "$CLAUSE" ] && NO_STMT_SPECIFIED="DELETE FROM" 
+			[ ! -z $DO_ID ] && [ -z "$CLAUSE" ] && NO_STMT_SPECIFIED="SELECT" 
 			[ ! -z $DO_WRITE ] && NO_STMT_SPECIFIED="INSERT INTO" 
 			[ ! -z $DO_UPDATE ] && [ -z "$SET" ] && NO_STMT_SPECIFIED="UPDATE" 
 			printf "Either no database, no table or no columns specified in the ${NO_STMT_SPECIFIED} statement.\n"
@@ -877,6 +892,13 @@ then
 	then
 		# Select all the records asked for.
  		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
+	fi
+
+	# select only id
+	if [ ! -z $DO_ID ]
+	then
+		# Select all the records asked for.
+ 		$SQLITE $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
 	fi
 
 	# update
