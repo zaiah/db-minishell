@@ -61,10 +61,11 @@ Read functions:
                               Format: <col>=<min>-<max>
 -f | --from <arg>             If \$__TABLE not set, set this to choose a
                               table to use in a SELECT statement.
--w | --where <arg>            Supply a clause to tune result set. 
+-w | --where <arg>            Supply a WHERE clause to tune result set. 
+-o | --or <arg>               Supply an OR clause to tune result set. 
 -z | --id <arg>               Affect an id or ids. 
 -d | --database <arg>         Choose a database to work with. 
-
+-a | --as <arg>               Choose a serialization type.
 
 Update Functions:
 -i | --write <arg>            Commit records in <arg> to database. 
@@ -91,6 +92,11 @@ General Options:
 
 
 # CREATE_LIB
+#-----------------------------------------------------#
+# Globals
+#-----------------------------------------------------#
+declare -a OR_X_AND			# Is it an OR or AND clause?
+
 #-----------------------------------------------------#
 # break_list_by_delim
 #
@@ -363,63 +369,75 @@ assemble_clause() {
 	# If it's one term, we can speed it up by just running a check for the |
 	if [ ! -z "$CLAUSE" ]
 	then
-	if [[ "$CLAUSE" =~ '|' ]]
-	then
-		# Using a '|' to mark the arguments, chop up our string accordingly.
+		if [[ "$CLAUSE" =~ '|' ]]
+		then
+			# Using a '|' to mark the arguments, chop up our string accordingly.
 
-		# Create a buffer and save the first position.
-		declare -a __CHOP_CLAUSE__
-		__CHOP_CLAUSE__[0]=0	 			
-
-
-		# Loop through each character in our clause to mark break points.
-		for __C__ in $(seq 0 "${#CLAUSE}")
-		do
-			[[ ${CLAUSE:$__C__:1} == "|" ]] && \
-				__CHOP_CLAUSE__[${#__CHOP_CLAUSE__[@]}]=$__C__ 
-		done
-		__CHOP_CLAUSE__[${#__CHOP_CLAUSE__[@]}]=${#CLAUSE}
+			# Create a buffer and save the first position.
+			declare -a __CHOP_CLAUSE__
+			__CHOP_CLAUSE__[0]=0	 			
 
 
-		# Iterate through each of the clauses.
-		CC_COUNT=1
-		for __DD__ in ${__CHOP_CLAUSE__[@]}
-		do
-			# Break if we've reached the end.
-			[ $__DD__ == ${#CLAUSE} ] && break
+			# Loop through each character in our clause to mark break points.
+			for __C__ in $(seq 0 "${#CLAUSE}")
+			do
+				[[ ${CLAUSE:$__C__:1} == "|" ]] && \
+					__CHOP_CLAUSE__[${#__CHOP_CLAUSE__[@]}]=$__C__ 
+			done
+			__CHOP_CLAUSE__[${#__CHOP_CLAUSE__[@]}]=${#CLAUSE}
 
-			# Get more creative...
-			if [ ! $__DD__ == 0 ] 
-			then
-				__DD__=$(( $__DD__ + 1 )) # Cut the char.
-				__EE__=$(( ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ ))
-				WHERE_TERM=${CLAUSE:$__DD__:$__EE__}
-			else
-				__EE__=$(( ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ ))
-				WHERE_TERM=${CLAUSE:$__DD__:$__EE__}
-			fi
+
+			# Have to process AND's or OR's
+			AO_INC=0			# An ugly little marker to track these...
+
+			# Iterate through each of the clauses.
+			CC_COUNT=1
+
+			for __DD__ in ${__CHOP_CLAUSE__[@]}
+			do
+				# Break if we've reached the end.
+				[ $__DD__ == ${#CLAUSE} ] && break
+
+				# Get more creative...
+				if [ ! $__DD__ == 0 ] 
+				then
+					__DD__=$(( $__DD__ + 1 )) # Cut the char.
+					__EE__=$(( ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ ))
+					WHERE_TERM=${CLAUSE:$__DD__:$__EE__}
+				else
+					__EE__=$(( ${__CHOP_CLAUSE__[$CC_COUNT]} - $__DD__ ))
+					WHERE_TERM=${CLAUSE:$__DD__:$__EE__}
+				fi
 		
-			# Increment again.
-			CC_COUNT=$(( $CC_COUNT + 1 ))
+				# Increment again.
+				CC_COUNT=$(( $CC_COUNT + 1 ))
 
-			# Chop up this particular part of the clause.
-			#case "$(chop_by_position "$WHERE_TERM")" in
-			chop_by_position "$WHERE_TERM"
+				# Chop up this particular part of the clause.
+				#case "$(chop_by_position "$WHERE_TERM")" in
+				chop_by_position "$WHERE_TERM"
+
+				# Build/append to the clause.
+				if [ ! -z "$STMT" ] && [[ ${OR_X_AND[$AO_INC]} == 'and' ]]
+				then
+					STMT="$STMT AND $__KEY__ $(convert "$__VALUE__")" 
+				elif [ ! -z "$STMT" ] && [[ ${OR_X_AND[$AO_INC]} == 'or' ]]
+				then
+					STMT="$STMT OR $__KEY__ $(convert "$__VALUE__")" 
+				else
+					STMT="WHERE $__KEY__ $(convert "$__VALUE__")" 
+				fi
+
+				AO_INC=$(( $AO_INC + 1 ))
+			done 
+
+		# Process one clause 
+		else
+			# Chop up the single clause. 
+			chop_by_position "$CLAUSE"
 
 			# Build/append to the clause.
-			[ -z "$STMT" ] && \
-				STMT="WHERE $__KEY__ $(convert "$__VALUE__")" || \
-				STMT="$STMT AND $__KEY__ $(convert "$__VALUE__")" 
-		done 
-
-	# Process one clause 
-	else
-		# Chop up the single clause. 
-		chop_by_position "$CLAUSE"
-
-		# Build/append to the clause.
-		STMT="WHERE $__KEY__ $(convert "$__VALUE__")" 
-	fi # [[ $CLAUSE =~ '|' ]]
+			STMT="WHERE $__KEY__ $(convert "$__VALUE__")" 
+		fi # [[ $CLAUSE =~ '|' ]]
 	fi
 
 
@@ -563,8 +581,28 @@ do
 			[ -z "$SET" ] && SET="$1" || SET="$SET|$1"
       ;;
 
+	  -o|--or)
+			OR_X_AND[${#OR_X_AND[@]}]="or"
+			shift
+			if [[ "$1" =~ "|" ]]
+			then
+				[ -z $DO_LIBRARIFY ] && \
+					printf "This argument can't have a pipe character (|)."
+				$__EXIT__ 1
+			fi
+			if [ -z "$CLAUSE" ]
+			then 
+				[ -z $DO_LIBRARIFY ] && \
+					printf "Must specify at least one --where clause."
+				$__EXIT__ 1
+			else
+				CLAUSE="$CLAUSE|$1"
+			fi
+		;;
+
      -w|--where)
          DO_WHERE=true
+			OR_X_AND[${#OR_X_AND[@]}]="and"
          shift
 			if [[ "$1" =~ "|" ]]
 			then
