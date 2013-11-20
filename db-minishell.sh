@@ -92,7 +92,6 @@ General Options:
 }
 
 
-# CREATE_LIB
 #-----------------------------------------------------#
 # Globals
 #-----------------------------------------------------#
@@ -123,16 +122,90 @@ break_maps_by_delim() {
 	echo ${m[@]}			# Return the list all ghetto-style.
 }
 
-
 #-----------------------------------------------------#
 # get_columns()
 #
 # Get the columns of a table.
 #-----------------------------------------------------#
 get_columns() {
-# 	$SQLITE -header $DB "SELECT * FROM ${__TABLE} LIMIT 1" | \
-#		head -n 1 | \
-#		sed 's/|/ /g'	
+	# Start fresh
+	unset __RESULTBUF__
+
+	# Hold the schema results in the buffer.
+	__RESULTBUF__="$( $SQLITE $DB ".schema ${__TABLE}")"
+
+	# Die if nothing is there...
+	if [ -z "$__RESULTBUF__" ]
+	then
+		exit 1
+
+	# If tables were written with newlines, use the below.
+	elif [ $(printf "%s" "$__RESULTBUF__" | wc -l) -gt 1 ]
+	then
+		# Process and reload the buffer.
+		# Could have an issue with `awk` on other systems.
+		__RESULTBUF__="$(printf '%s' "$__RESULTBUF__" | \
+			sed 's/\t//g' | \
+			sed 's/\r//g' | \
+			awk '{ print $1 }' | \
+			grep -v "CREATE" | \
+			sed 's/);//g' )"
+
+		# Alterante return - no for...
+		printf "%s" "$__RESULTBUF__"
+
+	# If tables were written with single line, use this...
+	else	
+		echo '...'
+		exit 1    # Can't handle this right now.
+
+	fi
+}
+
+
+#-----------------------------------------------------#
+# get_datatypes()
+#
+# Get the datatypes of a table.
+#-----------------------------------------------------#
+get_datatypes() {
+	# Start fresh
+	# unset __RESULTBUF__
+	for __COL__ in ${__DTBUF__[@]}
+	do
+		$__COL__
+	done
+
+	# Hold the schema results in buffer.
+	__DTBUF__="$( $SQLITE $DB ".schema ${__TABLE}")"
+
+	# Die if nothing is there...
+	if [ -z "$__DTBUF__" ]
+	then
+		exit 1
+
+	# If tables were written with newlines, use the below.
+	elif [ $(printf "%s" "$__DTBUF__" | wc -l) -gt 1 ]
+	then
+		# Process and reload the buffer.
+		# Could have an issue with `awk` on other systems.
+		__DTBUF__="$(printf '%s' "$__DTBUF__" | \
+			sed 's/\t//g' | \
+			sed 's/\r//g' | \
+			awk '{ print $2 }' | \
+			grep -v "TABLE" | \
+			sed 's/,//g' | \
+			sed 's/);//g' )"
+
+		# Alterante return - no for...
+		printf "%s" "$__DTBUF__"
+
+	# If tables were written with single line, use this...
+	else	
+		echo '...'
+		exit 1    # Can't handle this right now.
+
+	fi
 }
 
 
@@ -163,20 +236,20 @@ convert() {
 		# Check for other characters.
 		# Always going to throw an error.
 		elif [[ ${1:0:1} == '!' ]] || \
-		 [[ ${1:0:1} == '@' ]] || \
-		 [[ ${1:0:1} == '#' ]] || \
-		 [[ ${1:0:1} == '$' ]] || \
-		 [[ ${1:0:1} == '%' ]] || \
-		 [[ ${1:0:1} == '^' ]] || \
-		 [[ ${1:0:1} == '&' ]] || \
-		 [[ ${1:0:1} == '*' ]] || \
-		 [[ ${1:0:1} == '(' ]] || \
-		 [[ ${1:0:1} == ')' ]] || \
-		 [[ ${1:0:1} == '+' ]] || \
-		 [[ ${1:0:1} == '/' ]] || \
-		 [[ ${1:0:1} == '\' ]] || \
-		 [[ ${1:0:1} == '.' ]] || \
-		 [[ ${1:0:1} == '-' ]] 
+			[[ ${1:0:1} == '@' ]] || \
+			[[ ${1:0:1} == '#' ]] || \
+			[[ ${1:0:1} == '$' ]] || \
+			[[ ${1:0:1} == '%' ]] || \
+			[[ ${1:0:1} == '^' ]] || \
+			[[ ${1:0:1} == '&' ]] || \
+			[[ ${1:0:1} == '*' ]] || \
+			[[ ${1:0:1} == '(' ]] || \
+			[[ ${1:0:1} == ')' ]] || \
+			[[ ${1:0:1} == '+' ]] || \
+			[[ ${1:0:1} == '/' ]] || \
+			[[ ${1:0:1} == '\' ]] || \
+			[[ ${1:0:1} == '.' ]] || \
+			[[ ${1:0:1} == '-' ]] 
 		then
 			printf "'$1'"
 
@@ -513,14 +586,14 @@ declare -a NOT_CLAUSE
 # Can use a DO_LIB to evaluate which list to show...
 while [ $# -gt 0 ]
 do
-   case "$1" in
-     -b|--between)
+	case "$1" in
+		-b|--between)
 			shift
 			__BETWEEN="$1"
 		;;
 
-     -c|--columns)
-         DO_GET_COLUMNS=true
+		-c|--columns)
+			DO_GET_COLUMNS=true
 			shift
 			__TABLE="$1"
 		;;
@@ -534,46 +607,46 @@ do
 #			__TABLE="$1"
 #		;;
 
-     -s|--select)
-         DO_SEND_QUERY=true
-         DO_SELECT=true
-         shift
-         SELECT="$1"
-      ;;
+		-s|--select)
+			DO_SEND_QUERY=true
+			DO_SELECT=true
+			shift
+			SELECT="$1"
+		;;
 
-     -f|--from)
-         DO_FROM=true
-         shift
-         __TABLE="$1"
-      ;;
+		-f|--from)
+			DO_FROM=true
+			shift
+			__TABLE="$1"
+		;;
 
-	  -t|--into)
+		-t|--into)
 			shift
 			__TABLE="$1"
 		;; 
 
-	  -im|--insert-from-mem)
-         DO_SEND_QUERY=true
-         DO_WRITE=true
+		-im|--insert-from-mem)
+			DO_SEND_QUERY=true
+			DO_WRITE=true
 			DO_WRITE_FROM_MEM=true
-	  ;;
+		;;
 
-     -i|--write|--insert)
-         DO_SEND_QUERY=true
-         DO_WRITE=true
-         shift
-         WRITE="$1"
-      ;;
+		-i|--write|--insert)
+			DO_SEND_QUERY=true
+			DO_WRITE=true
+			shift
+			WRITE="$1"
+		;;
 
-     -u|--update)
-         DO_SEND_QUERY=true
-         DO_UPDATE=true
-         shift
-         __TABLE="$1"
-      ;;
+		-u|--update)
+			DO_SEND_QUERY=true
+			DO_UPDATE=true
+			shift
+			__TABLE="$1"
+		;;
 
-     -e|--set)
-         shift
+		-e|--set)
+			shift
 			if [[ "$1" =~ "|" ]]
 			then
 				[ -z $DO_LIBRARIFY ] && \
@@ -581,9 +654,9 @@ do
 				$__EXIT__ 1
 			fi
 			[ -z "$SET" ] && SET="$1" || SET="$SET|$1"
-      ;;
+		;;
 
-	  -o|--or)
+		-o|--or)
 			OR_X_AND[${#OR_X_AND[@]}]="or"
 			shift
 			if [[ "$1" =~ "|" ]]
@@ -602,10 +675,10 @@ do
 			fi
 		;;
 
-     -w|--where)
-         DO_WHERE=true
+		-w|--where)
+			DO_WHERE=true
 			OR_X_AND[${#OR_X_AND[@]}]="and"
-         shift
+			shift
 			if [[ "$1" =~ "|" ]]
 			then
 				[ -z $DO_LIBRARIFY ] && \
@@ -613,23 +686,27 @@ do
 				$__EXIT__ 1
 			fi
 			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
-      ;;
+		;;
 
-     -r|--remove|--delete)
-         DO_SEND_QUERY=true
-         DO_REMOVE=true
-      ;;
+		-r|--remove|--delete)
+			DO_SEND_QUERY=true
+			DO_REMOVE=true
+		;;
 
-	  -d|--database)
+		-dt|--datatypes)
+			DO_GET_DATATYPES=true
+		;;
+
+		-d|--database)
 			shift
 			DB="$1"
 		;;
 
-     --id)
-         DO_SEND_QUERY=true
-         DO_ID=true
+		--id)
+			DO_SEND_QUERY=true
+			DO_ID=true
 			OR_X_AND[${#OR_X_AND[@]}]="and"
-         shift
+			shift
 			if [[ "$1" =~ "|" ]]
 			then
 				[ -z $DO_LIBRARIFY ] && \
@@ -637,62 +714,64 @@ do
 				$__EXIT__ 1
 			fi
 			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
-      ;;
-
-		--set-id)
-         shift
-         ID_IDENTIFIER="$1"
 		;;
 
-	  # I figured out how to do this...
-	  --install|--librarify|--libname|--verbose|--help)
+		--set-id)
+			shift
+			ID_IDENTIFIER="$1"
+		;;
+
+		-v|--verbose)
+			VERBOSE=true
+			;;
+
+		# I figured out how to do this...
+		--install|--librarify|--libname|--verbose|--help)
 			if [ -z $DO_LIBRARIFY ]
 			then
 				case "$1" in
-				 --install)
-					  DO_INSTALL=true
-					  shift
-					  INSTALL_DIR=$1
-				  ;;
+				--install)
+						DO_INSTALL=true
+						shift
+						INSTALL_DIR=$1
+					;;
 
-				 --librarify)
-					  CREATE_LIB=true
-				  ;;
+				--librarify)
+						CREATE_LIB=true
+					;;
 
-				 -l|--libname)
-					  CREATE_LIB=true
-					  shift
-					  LIB_CRNAME="$1"		
-				  ;;
+				-l|--libname)
+						CREATE_LIB=true
+						shift
+						LIB_CRNAME="$1"		
+					;;
 
-				 -v|--verbose)
-					 VERBOSE=true
-				  ;;
 
-				 -h|--help)
-					 $__EXIT__ 0
-				  ;;
+				-h|--help)
+					$__EXIT__ 0
+					;;
 				esac
 			else
 				break
 			fi
 		;;
 
-     --) break;;
+		--) break;;
 
-     -*)
-      printf "Unknown argument received.\n";
-      $__EXIT__ 1
-     ;;
+		-*)
+		printf "Unknown argument received.\n";
+		$__EXIT__ 1
+		;;
 
-     *) break;;
-   esac
+		*) break;;
+	esac
 shift
 done
 
 
 # Set table properly.
-__TABLE="$TABLE"
+[ ! -z "$TABLE" ] && __TABLE="$TABLE"
+
 
 # get a column listing 
 if [ ! -z $DO_GET_COLUMNS ]
@@ -709,7 +788,7 @@ fi
 if [ ! -z $DO_GET_COLUMN_TYPES ]
 then
 	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
- 	$SQLITE $DB ".schema ${__TABLE}"
+	$SQLITE $DB ".schema ${__TABLE}"
 fi
 
 
@@ -759,6 +838,11 @@ then
 	printf "\n}\n"
 fi
 
+if [ ! -z $DO_GET_DATATYPES ]
+then
+	get_datatypes
+fi
+
 
 # Send a query onto the db.
 if [ ! -z $DO_SEND_QUERY ]
@@ -796,12 +880,16 @@ then
 			for col_name in $(get_columns) 
 			do
 				# Skip IDs, id,uid?
-				if [[ $col_name == "id" ]] || [[ $col_name == "uid" ]] || \ 
-					[[ $col_name == "ID" ]] || [[ $col_name == "UID" ]]
+				if [[ "$col_name" == "id" ]] || \
+					[[ "$col_name" == "uid" ]] || \
+					[[ "$col_name" == "ID" ]] || \
+					[[ "$col_name" == "UID" ]]
 				then 
 					__INSTR__="null"
 					continue
 				fi
+#read
+echo "'$col_name'"
 
 				# If any of these are null, we should probably stop.
 				# Or at least come up with a way to specify what
@@ -809,7 +897,8 @@ then
 
 				# Get the var's value.
 				#__VARVAL__="\$$(echo ${col_name} | tr '[a-z]' '[A-Z]')"
-				__VARVAL__="\$(convert \"\$$(echo ${col_name}\" | tr '[a-z]' '[A-Z]'))"
+				__VARVAL__="\$(convert \"\$$(echo ${col_name}\" | \
+					tr '[a-z]' '[A-Z]'))"
 
 				# Create a INSERT string.
 				if [ -z "$__INSTR__" ]
@@ -821,10 +910,13 @@ then
 				# Append to an INSERT string.
 				__INSTR__="$__INSTR__, $__VARVAL__" 
 			done
-			
+		
+			echo "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+			eval "echo \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+			eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 			# Should probably be careful here.  
 			# Mostly just path stuff to worry about.
- 			eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+#				eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 
 		# Allow the ability to craft a more standard INSERT own.
 		else
@@ -884,7 +976,7 @@ then
 			# Writing this recursively would involve knowing where the string is...
 
 			# Just taking a command line dump here.
- 			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
+			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
 		fi
 	fi
 
@@ -895,14 +987,16 @@ then
 	if [ ! -z $DO_SELECT ]
 	then
 		# Select all the records asked for.
- 		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
+		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
+
+		# This is the only place where serialization is even an intelligent choice.
 	fi
 
 	# select only id
 	if [ ! -z $DO_ID ]
 	then
 		# Select all the records asked for.
- 		$SQLITE $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
+		$SQLITE $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
 	fi
 
 	# update
@@ -910,14 +1004,14 @@ then
 	then
 		# Compound your SET statements, same rules apply as in regular statment
 		assemble_set
- 		$SQLITE $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
+		$SQLITE $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
 	fi
 
 
 	# remove
 	if [ ! -z $DO_REMOVE ]
 	then
- 		#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
- 		$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
+		#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
+		$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
 	fi
 fi # END [ DO_SEND_QUERY ]
