@@ -691,6 +691,9 @@ shift
 done
 
 
+# Set table properly.
+__TABLE="$TABLE"
+
 # get a column listing 
 if [ ! -z $DO_GET_COLUMNS ]
 then
