@@ -130,10 +130,11 @@ break_maps_by_delim() {
 # Get the columns of a table.
 #-----------------------------------------------------#
 get_columns() {
- 	$SQLITE -header $DB "SELECT * FROM ${__TABLE} LIMIT 1" | \
-		head -n 1 | \
-		sed 's/|/ /g'	
+# 	$SQLITE -header $DB "SELECT * FROM ${__TABLE} LIMIT 1" | \
+#		head -n 1 | \
+#		sed 's/|/ /g'	
 }
+
 
 
 #-----------------------------------------------------#
