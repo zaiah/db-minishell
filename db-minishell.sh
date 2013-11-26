@@ -122,6 +122,8 @@ break_maps_by_delim() {
 	echo ${m[@]}			# Return the list all ghetto-style.
 }
 
+
+
 #-----------------------------------------------------#
 # get_columns()
 #
@@ -160,6 +162,268 @@ get_columns() {
 		exit 1    # Can't handle this right now.
 
 	fi
+}
+
+
+#-----------------------------------------------------#
+# load_from_db_columns
+#
+# Create a variable in Bash out of each column header 
+# in a table and fill it with information found in 
+# that column.
+#-----------------------------------------------------#
+load_from_db_columns() {
+	# Die if no table name.
+	#__TABLE="$1"
+	if [ -z "$__TABLE" ]
+	then
+		echo "In function: load_from_db_columns()"
+		echo "\tNo table name supplied, You've made an error in coding."
+		exit 1
+	else
+
+	# I have 3 choices:
+	# 1. Return the variable names (which is mostly useless)
+	# 2. Return the variable names filled with a record I asked for.
+	# 3. Return the variable names within some namespaced var (prefix
+	# or suffix...
+
+	# Low memory systems will probably need to write to file...
+	# Dunno how you control this, or even if you should...
+#		if [ ! -z $USE_FILES ]
+#		then
+#			# Output a list of variables to temporary file.
+#			# This code needs to be introduced to our application somehow
+#			# eval is one choice
+#			# Files and source are another... (but not reliable if deleted) 
+#			COUNTER=0
+#			for XX in ${LFDB_VARS[@]}
+#			do
+#				( printf "DEFAULT_${XX}='"
+#				echo $LFDB_RES | \
+#					awk -F '|' "{ print \$$(( $COUNTER + 1 )) }" | \
+#					sed "s/$/'/"
+#				printf "${XX}="
+#				printf '${'
+#				printf "$XX"
+#				printf ':-${DEFAULT_'
+#				printf "$XX"
+#				printf '}}\n' ) 
+#				COUNTER=$(( $COUNTER + 1 ))
+#			done
+#
+#
+#		else
+
+
+#		if [ ! -z "$PREFIX" ]	
+#		then
+#		# This is the useless one...
+#			get_columns | tr '[a-z]' '[A-Z]' | \
+#				sed "s/^/${PREFIX}_" | \
+#				sed 's/$/=/'
+#
+#		elif [ ! -z "$SUFFIX" ]
+#		then
+#			get_columns | tr '[a-z]' '[A-Z]' | \
+#				sed "s/$/_${SUFFIX}" | \
+#				sed 's/$/=/'
+#
+#		else
+#	#		get_columns | tr '[a-z]' '[A-Z]' | sed 's/$/=/'
+#
+#			get_columns | tr '[a-z]' '[A-Z]' | sed 's/$/=/'
+#		fi
+#		fi
+
+
+# Get column names 
+MEGA_COLUMNS=( $(get_columns) )
+MEGA_RES="$1"
+
+# ...
+for CINC in $(seq 0 ${#MEGA_COLUMNS[@]})
+do
+	printf "%s" ${MEGA_COLUMNS[$CINC]} | tr '[a-z]' '[A-Z]' | sed 's/$/=/'
+	printf "%s" $MEGA_RES | awk -F '|' "{print \$$(( $CINC + 1 ))}"
+done
+		# Load these within the program.
+		#cat $TMPFILE
+		#source $TMPFILE
+		#[ -e $TMPFILE ] && rm $TMPFILE
+#get_columns
+exit
+	fi
+}
+
+
+#-----------------------------------------------------#
+# modify_from_db_columns
+#
+# Load data from database and edit from a temporary file, writing back the results.
+#-----------------------------------------------------#
+modify_from_db_columns() {
+	# Catch input.
+	TABLE="$1"
+
+	# Die if no table name.
+	if [ -z "$TABLE" ]
+	then
+		echo "In function: load_from_db_columns()"
+		echo "\tNo table name supplied, You've made an error in coding."
+		exit 1
+
+	else
+		# Use Some namespace...
+		# LFDB
+		TMP="/tmp"
+		TMPFILE=$TMP/__lfdb.sql
+		[ -e $TMPFILE ] && rm $TMPFILE
+		touch $TMPFILE
+
+		# Choose a table and this function should: 
+		# Get column titles and create variable names.
+		if [ ! -z "$CLAUSE" ]
+		then
+#			printf ".headers ON\nSELECT * FROM ${TABLE} $CLAUSE;\n" >> $TMPFILE
+			printf ".headers ON\nSELECT * FROM ${TABLE} $CLAUSE;\n" 
+		else
+			printf ".headers ON\nSELECT * FROM ${TABLE};\n" >> $TMPFILE
+		fi
+			exit
+		LFDB_HEADERS=( $( $__SQLITE $DB < $TMPFILE | \
+			head -n 1 | \
+			tr '|' ',' ) )
+
+		LFDB_VARS=( $( $__SQLITE $DB < $TMPFILE | \
+			head -n 1 | \
+			tr '|' ' ' | \
+			tr [a-z] [A-Z] ) )
+
+		LFDB_ID=$( $__SQLITE $DB < $TMPFILE | \
+			tail -n 1 | \
+			awk -F '|' '{ print $1 }')
+
+		[ -e $TMPFILE ] && rm $TMPFILE
+
+
+		# Get all items.
+		printf "SELECT ${LFDB_HEADERS[@]} FROM ${TABLE};\n" >> $TMPFILE
+		LFDB_RES=$( $__SQLITE $DB < $TMPFILE | tail -n 1 )
+		[ -e $TMPFILE ] && rm $TMPFILE
+
+
+		# Need a few traps to get rid of these files if things go wrong.
+
+
+		# Output database values as variables within temporary file.
+		TMPFILE=$TMP/__dbvar.sh
+		COUNTER=0
+		for XX in ${LFDB_VARS[@]}
+		do
+			if [[ ! $XX == 'ID' ]]
+			then
+				# Needs some basic string / number checking
+				( printf "${XX}='"
+				echo $LFDB_RES | \
+					awk -F '|' "{ print \$$(( $COUNTER + 1 )) }" | \
+					sed "s/$/'/"
+				#printf $LFDB_RES | awk -F '|' "{ print \$$(( $COUNTER + 1 )) }"
+				) >> $TMPFILE
+			fi
+			COUNTER=$(( $COUNTER + 1 ))
+		done
+
+
+		# Load these within the program.
+		MODIFY=true
+		[ ! -z $MODIFY ] && $EDITOR $TMPFILE
+		source $TMPFILE
+		[ -e $TMPFILE ] && rm $TMPFILE
+
+
+		# Check through the list and see what's changed.
+		# Output database values as variables within temporary file.
+		TMPFILE=$TMP/__cmp.sh
+		COUNTER=0
+		for XX in ${LFDB_VARS[@]}
+		do
+			if [[ ! $XX == 'ID' ]]
+			then
+				# Needs some basic string / number checking
+				( printf "ORIG_${XX}='"
+				echo $LFDB_RES | \
+					awk -F '|' "{ print \$$(( $COUNTER + 1 )) }" | \
+					sed "s/$/'/"
+				#printf $LFDB_RES | awk -F '|' "{ print \$$(( $COUNTER + 1 )) }"
+				) >> $TMPFILE
+			fi
+			COUNTER=$(( $COUNTER + 1 ))
+		done
+		source $TMPFILE
+		[ -e $TMPFILE ] && rm $TMPFILE
+
+
+		# Load stuff.
+		TMPFILE=$TMP/__load.sh
+		COUNTER=0
+		printf "SQL_LOADSTRING=\"UPDATE $TABLE SET " >> $TMPFILE
+		for XX in ${LFDB_VARS[@]}
+		do
+			if [[ ! $XX == 'ID' ]]
+			then
+				# Variables...
+				USER="${!XX}"
+				VAR_NAME="ORIG_$XX"
+				ORIG="${!VAR_NAME}"
+				COLUMN_NAME="$(echo ${XX} | tr [A-Z] [a-z])"
+
+				# Check values and make sure they haven't changed.
+				FV=
+				if [[ "$USER" == "$ORIG" ]]
+				then
+					FV=$ORIG
+				else
+					FV=$USER
+				fi
+
+				# Evaluate with that neat little typechecking function.
+				VAR_TYPE=$(typecheck $USER)
+				printf "$COLUMN_NAME = "  >> $TMPFILE
+				[[ $VAR_TYPE == "null" ]] && printf "''" >> $TMPFILE
+				[[ $VAR_TYPE == "string" ]] && printf "'$FV'" >> $TMPFILE
+				[[ $VAR_TYPE == "integer" ]] && printf "$FV" >> $TMPFILE
+
+				# Wrap final clause in the statement.
+				if [ $COUNTER == $(( ${#LFDB_VARS[@]} - 1 )) ] 
+				then
+					( printf '\n' 
+					printf "WHERE id = $LFDB_ID;\"\n" ) >> $TMPFILE
+				else
+					printf ',\n' >> $TMPFILE
+				fi	
+			fi
+			COUNTER=$(( $COUNTER + 1 ))
+		done
+		unset COUNTER
+
+		# Load the new stuff.
+		source $TMPFILE
+		[ -e $TMPFILE ] && rm $TMPFILE
+		
+		# Only write if they've changed?
+		# (You'll need the id of whatever is being modified as well...)
+
+		# Do the write.
+		#echo $SQL_LOADSTRING
+		$__SQLITE $DB "$SQL_LOADSTRING"
+
+		#vi -O $TMP/__{cmp,dbvar}.sh
+		# Write stuff to database 
+		[ -e $TMPFILE ] && rm $TMPFILE
+	fi
+
+	unset CLAUSE
 }
 
 
@@ -631,6 +895,13 @@ do
 			DO_WRITE_FROM_MEM=true
 		;;
 
+
+		-sa|--show-as)
+			DO_SERIALIZATION=true
+			shift
+			SERIALIZATION_TYPE="$1"
+		;;
+
 		-i|--write|--insert)
 			DO_SEND_QUERY=true
 			DO_WRITE=true
@@ -725,6 +996,16 @@ do
 			VERBOSE=true
 			;;
 
+		--tables)
+			DO_SHOW_TABLES=true
+		;;
+
+		--vardump)
+			DO_VARDUMP=true
+			shift
+			QUERY_ARG="$1"
+		;;
+
 		# I figured out how to do this...
 		--install|--librarify|--libname|--verbose|--help)
 			if [ -z $DO_LIBRARIFY ]
@@ -765,7 +1046,7 @@ do
 
 		*) break;;
 	esac
-shift
+	shift
 done
 
 
@@ -838,11 +1119,25 @@ then
 	printf "\n}\n"
 fi
 
+# ...
+if [ ! -z $DO_SHOW_TABLES ]
+then
+	$SQLITE $DB '.tables'
+fi
+
+# ...
 if [ ! -z $DO_GET_DATATYPES ]
 then
 	get_datatypes
 fi
 
+# test 
+if [ ! -z $DO_VARDUMP ]
+then
+	#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
+	#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
+	load_from_db_columns "$QUERY_ARG"
+fi
 
 # Send a query onto the db.
 if [ ! -z $DO_SEND_QUERY ]
@@ -888,8 +1183,7 @@ then
 					__INSTR__="null"
 					continue
 				fi
-#read
-echo "'$col_name'"
+
 
 				# If any of these are null, we should probably stop.
 				# Or at least come up with a way to specify what
@@ -986,8 +1280,19 @@ echo "'$col_name'"
 	# select
 	if [ ! -z $DO_SELECT ]
 	then
+		case "$SERIALIZATION_TYPE" in
+			line) SR_TYPE="-line" ;;
+			html) SR_TYPE="-html" ;;
+			list) SR_TYPE="-list" ;;
+			*) SR_TYPE="-list" ;;
+		esac
+
+		# Headers?
 		# Select all the records asked for.
-		$SQLITE $DB "SELECT $SELECT FROM ${__TABLE}${STMT}"
+
+		# From this function, if I want "prefilled" values,
+		# then I'll have to work at it.
+		$SQLITE $DB $SR_TYPE "SELECT $SELECT FROM ${__TABLE}${STMT}"
 
 		# This is the only place where serialization is even an intelligent choice.
 	fi
@@ -1014,4 +1319,5 @@ echo "'$col_name'"
 		#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
 		$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
 	fi
+
 fi # END [ DO_SEND_QUERY ]
