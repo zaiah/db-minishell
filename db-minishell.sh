@@ -95,6 +95,8 @@ General Options:
 #-----------------------------------------------------#
 # Globals
 #-----------------------------------------------------#
+
+# CREATE_LIB	--- Always need at least this line.
 declare -a OR_X_AND			# Is it an OR or AND clause?
 
 #-----------------------------------------------------#
@@ -180,79 +182,27 @@ load_from_db_columns() {
 		echo "In function: load_from_db_columns()"
 		echo "\tNo table name supplied, You've made an error in coding."
 		exit 1
+
 	else
+		# Get column names 
+		MEGA_COLUMNS=( $(get_columns) )
+		MEGA_RES="$1"
 
-	# I have 3 choices:
-	# 1. Return the variable names (which is mostly useless)
-	# 2. Return the variable names filled with a record I asked for.
-	# 3. Return the variable names within some namespaced var (prefix
-	# or suffix...
+		# ...
+		for CINC in $(seq 0 ${#MEGA_COLUMNS[@]})
+		do
+			printf "%s" ${MEGA_COLUMNS[$CINC]} | \
+				tr '[a-z]' '[A-Z]' | sed 's/$/=/'
+			printf "%s" $MEGA_RES | \
+				awk -F '|' "{print \$$(( $CINC + 1 ))}"
+		done
 
-	# Low memory systems will probably need to write to file...
-	# Dunno how you control this, or even if you should...
-#		if [ ! -z $USE_FILES ]
-#		then
-#			# Output a list of variables to temporary file.
-#			# This code needs to be introduced to our application somehow
-#			# eval is one choice
-#			# Files and source are another... (but not reliable if deleted) 
-#			COUNTER=0
-#			for XX in ${LFDB_VARS[@]}
-#			do
-#				( printf "DEFAULT_${XX}='"
-#				echo $LFDB_RES | \
-#					awk -F '|' "{ print \$$(( $COUNTER + 1 )) }" | \
-#					sed "s/$/'/"
-#				printf "${XX}="
-#				printf '${'
-#				printf "$XX"
-#				printf ':-${DEFAULT_'
-#				printf "$XX"
-#				printf '}}\n' ) 
-#				COUNTER=$(( $COUNTER + 1 ))
-#			done
-#
-#
-#		else
-
-
-#		if [ ! -z "$PREFIX" ]	
-#		then
-#		# This is the useless one...
-#			get_columns | tr '[a-z]' '[A-Z]' | \
-#				sed "s/^/${PREFIX}_" | \
-#				sed 's/$/=/'
-#
-#		elif [ ! -z "$SUFFIX" ]
-#		then
-#			get_columns | tr '[a-z]' '[A-Z]' | \
-#				sed "s/$/_${SUFFIX}" | \
-#				sed 's/$/=/'
-#
-#		else
-#	#		get_columns | tr '[a-z]' '[A-Z]' | sed 's/$/=/'
-#
-#			get_columns | tr '[a-z]' '[A-Z]' | sed 's/$/=/'
-#		fi
-#		fi
-
-
-# Get column names 
-MEGA_COLUMNS=( $(get_columns) )
-MEGA_RES="$1"
-
-# ...
-for CINC in $(seq 0 ${#MEGA_COLUMNS[@]})
-do
-	printf "%s" ${MEGA_COLUMNS[$CINC]} | tr '[a-z]' '[A-Z]' | sed 's/$/=/'
-	printf "%s" $MEGA_RES | awk -F '|' "{print \$$(( $CINC + 1 ))}"
-done
 		# Load these within the program.
 		#cat $TMPFILE
 		#source $TMPFILE
 		#[ -e $TMPFILE ] && rm $TMPFILE
-#get_columns
-exit
+		#get_columns
+		exit
 	fi
 }
 
@@ -833,11 +783,12 @@ then
 	# This will kill ksh
 	__EXIT__="usage"
 	[ -z "$BASH_ARGV" ] && printf "Nothing to do\n" && $__EXIT__ 1
+
 else
 	__EXIT__="exit"
-	[ $# -le 0 ] && $__EXIT__ 1		# Exit if no args given to library.
-	[ -z "$SQLITE" ] && SQLITE="$(which sqlite3)"  # Define SQLite if not.
-	LOGFILE="/dev/stderr"				# Set a log file.
+	[ $# -le 0 ] && $__EXIT__ 1							# Exit if no args given to library.
+	[ -z "$SQLITE" ] && SQLITE="$(which sqlite3)"  	# Define SQLite if not.
+	LOGFILE="/dev/stderr"									# Set a log file.
 fi
 
 
@@ -1092,6 +1043,9 @@ then
 	# If nothing else is excluded, then just '# CREATE_LIB'
 	[ -z "$LIB_CRNAME" ] && LIB_CRNAME="db_minishell"
 
+	# Generate a license.
+	sed -n 2,30p $SELF 
+
 	# Basic libstuff.
 	printf "${LIB_CRNAME}() {\n"
 	printf "\tDO_LIBRARIFY=true\n"
@@ -1113,7 +1067,7 @@ then
 	CAT_END=$(wc -l $SELF | awk '{print $1}')
 
 	# Output the document.
-	sed -n ${CAT_START},${CAT_END}p $SELF
+	sed -n ${CAT_START},${CAT_END}p $SELF | sed 's/^/\t/' 
 
 	# Wrap last statement.
 	printf "\n}\n"
