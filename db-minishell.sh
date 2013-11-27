@@ -50,43 +50,46 @@ usage() {
 	[ - ]
 
 Read functions:
--c | --columns <arg>          List the columns in a table <arg>. 
--s | --select <arg>           Select columns from a table. 
-     --distinct <arg>         Select distinct rows from a table. 
-     --limit <arg>            Limit result set.
-     --offset <arg>           Use an offset when using the limit.
-     --having <arg>           Having ?
-     --order-by [asc|desc]    Order the rows.
--b | --between <arg>          Use the BETWEEN clause.
-                              Format: <col>=<min>-<max>
--f | --from <arg>             If \$__TABLE not set, set this to choose a
-                              table to use in a SELECT statement.
--w | --where <arg>            Supply a WHERE clause to tune result set. 
--o | --or <arg>               Supply an OR clause to tune result set. 
--z | --id <arg>               Retrieve only an id.
--d | --database <arg>         Choose a database to work with. 
--a | --as <arg>               Choose a serialization type.
+-c | --columns <arg>         List the columns in a table <arg>. 
+-s | --select <arg>          Select columns from a table. 
+     --distinct <arg>        Select distinct rows from a table. 
+     --limit <arg>           Limit result set.
+     --offset <arg>          Use an offset when using the limit.
+     --having <arg>          Having ?
+     --order-by [asc|desc]   Order the rows.
+-b | --between <arg>         Use the BETWEEN clause.
+                             Format: <col>=<min>-<max>
+-f | --from <arg>            If \$__TABLE not set, set this to choose a
+                             table to use in a SELECT statement.
+-w | --where <arg>           Supply a WHERE clause to tune result set. 
+-o | --or <arg>              Supply an OR clause to tune result set. 
+-z | --id <arg>              Retrieve only an id.
+-d | --database <arg>        Choose a database to work with. 
+-a | --as <arg>              Choose a serialization type.
 
 Update Functions:
--i | --write <arg>            Commit records in <arg> to database. 
-     --insert <arg>           Synonym for --write.
-     --insert-from-mem        Craft and commit statement from variables.
--u | --update <arg>           If \$__TABLE not set, set this to choose a
-                              table to use in an UPDATE statement.
--e | --set <arg>              Set <column> = <value>
--r | --remove                 Remove entry or entries depending on clause. 
-     --delete                 Synonym for --remove
--x | --remove-where <arg>     Remove entry or entries depending on <arg>.
-     --delete-where <arg>     Synonym for --remove
+-i | --write <arg>           Commit records in <arg> to database. 
+     --insert <arg>          Synonym for --write.
+     --insert-from-mem       Craft and commit statement from variables.
+-u | --update <arg>          If \$__TABLE not set, set this to choose a
+                             table to use in an UPDATE statement.
+-e | --set <arg>             Set <column> = <value>
+-r | --remove                Remove entry or entries depending on clause. 
+     --delete                Synonym for --remove
+-x | --remove-where <arg>    Remove entry or entries depending on <arg>.
+     --delete-where <arg>    Synonym for --remove
 
 General Options:
---set-id <colname>            Set the id column name ('id' is default column name.)
---librarify                   Create a library out of db-minishell for use
-                              within a shell script.
---libname <name>              Create the library with a name <name>.
---install <dir>               Install to a location. <dir> must be absolute.
--v | --verbose                Be verbose in output.
--h | --help                   Show this help and quit.
+     --schemata <name>       Create the library with a name <name>.
+                             (Not functional currently...)
+     --set-id <colname>      Set the id column name ('id' is default 
+	                          column name.)
+     --librarify             Create a library out of db-minishell for use
+                             within a shell script.
+     --libname <name>        Create the library with a name <name>.
+     --install <dir>         Install to a location. <dir> must be absolute.
+-v | --verbose               Be verbose in output.
+-h | --help                  Show this help and quit.
 "
    exit $STATUS
 }
