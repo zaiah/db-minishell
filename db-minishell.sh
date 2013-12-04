@@ -105,71 +105,38 @@ General Options:
 #-----------------------------------------------------#
 
 # CREATE_LIB	--- Always need at least this line.
-declare -a OR_X_AND			# Is it an OR or AND clause?
-
-#-----------------------------------------------------#
-# break_list_by_delim
-#
-# Creates an array based on a string containing 
-# delimiters.
-#-----------------------------------------------------#
-# break-list - creates an array based on some set of delimiters.
-break_list_by_delim() {
-	mylist=(`printf $1 | sed "s/${DELIM}/ /g"`)
-	echo ${mylist[@]}		# Return the list all ghetto-style.
-}
-
-
-#-----------------------------------------------------#
-# break_maps_by_delim
-#
-# Creates a key to value pair based on a string 
-# containing delimiters.
-#-----------------------------------------------------#
-break_maps_by_delim() {
-	join="${2-=}"			# Allow for an alternate map marker.
-	local m=(`printf $1 | sed "s/${join}/ /g"`)
-	echo ${m[@]}			# Return the list all ghetto-style.
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # Die if no arguments received.
 if [ -z $DO_LIBRARIFY ]
 then
-	# This will kill ksh
+	# Define proper exit command.
 	__EXIT__="usage"
-	[ -z "$BASH_ARGV" ] && printf "Nothing to do\n" && $__EXIT__ 1
+
+	# This will kill ksh
+	[ -z "$BASH_ARGV" ] && {
+		printf "Nothing to do\n" 
+		$__EXIT__ 1
+	}
 
 else
+	# Define proper exit command.
 	__EXIT__="exit"
-	[ $# -le 0 ] && $__EXIT__ 1							# Exit if no args given to library.
-	[ -z "$SQLITE" ] && SQLITE="$(which sqlite3)"  	# Define SQLite if not.
-	LOGFILE="/dev/stderr"									# Set a log file.
+
+	# Exit if no args given to library.
+	[ $# -le 0 ] && $__EXIT__ 1	
+
+	# If SQLite has not previously been defined, define it.
+	[ -z "$SQLITE" ] && SQLITE="$(which sqlite3)" 
+
+	# Use something as a log file.
+	LOGFILE="/dev/stderr"
 fi
 
 
-# Array
+# Arrays
 declare -a WHERE_CLAUSE 
 declare -a NOT_CLAUSE 
+declare -a OR_X_AND			# Is it an OR or AND clause?
 
 
 # Process options.
@@ -177,6 +144,7 @@ declare -a NOT_CLAUSE
 while [ $# -gt 0 ]
 do
 	case "$1" in
+		# [ ORM ] 
 		-b|--between)
 			shift
 			__BETWEEN="$1"
@@ -288,7 +256,9 @@ do
 			DO_SEND_QUERY=true
 			DO_REMOVE=true
 		;;
+		# [ ORM ] 
 
+		# [ ADMIN ] 
 		-dt|--datatypes)
 			DO_GET_DATATYPES=true
 		;;
@@ -317,10 +287,6 @@ do
 			ID_IDENTIFIER="$1"
 		;;
 
-		-v|--verbose)
-			VERBOSE=true
-			;;
-
 		--tables)
 			DO_SHOW_TABLES=true
 		;;
@@ -330,6 +296,7 @@ do
 			shift
 			QUERY_ARG="$1"
 		;;
+		# [ ADMIN ] 
 
 		# I figured out how to do this...
 		--install|--librarify|--libname|--verbose|--help)
@@ -351,11 +318,13 @@ do
 						shift
 						LIB_CRNAME="$1"		
 					;;
-
+				-v|--verbose)
+					VERBOSE=true
+				;;
 
 				-h|--help)
 					$__EXIT__ 0
-					;;
+				;;
 				esac
 			else
 				break

@@ -1,8 +1,10 @@
 
 dbm=/home/zaiah/projects/db_minishell CD=. {
  README.md
+ build.sh
  db-minishell.sh
  db.sh
+ dbm-old.sh
  dbms.vim
  library.sh
  lib=lib {
