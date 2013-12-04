@@ -54,8 +54,7 @@ usage() {
 	[ - ]
 
 Read functions:
--c | --columns <arg>         List the columns in a table <arg>. 
--s | --select <arg>          Select columns from a table. 
+-s | --select <arg>          Select <arg> columns from a table. 
      --distinct <arg>        Select distinct rows from a table. 
      --limit <arg>           Limit result set.
      --offset <arg>          Use an offset when using the limit.
@@ -68,9 +67,17 @@ Read functions:
 -w | --where <arg>           Supply a WHERE clause to tune result set. 
 -o | --or <arg>              Supply an OR clause to tune result set. 
 -z | --id <arg>              Retrieve only an id.
--d | --database <arg>        Choose a database to work with. 
 -sa| --show-as <arg>         Choose a serialization type.
                              ( line, 
+
+Administrative Functions:
+-d | --database <arg>        Choose a database to work with. 
+-c | --columns <arg>         List the columns in a table <arg>. 
+     --tables                List the tables in a database.
+     --schemata <name>       Create the library with a name <name>.
+                             (Not functional currently...)
+     --set-id <colname>      Set the id column name ('id' is default 
+	                          column name.)
 
 Update Functions:
 -i | --write <arg>           Commit records in <arg> to database. 
@@ -85,10 +92,6 @@ Update Functions:
      --delete-where <arg>    Synonym for --remove
 
 General Options:
-     --schemata <name>       Create the library with a name <name>.
-                             (Not functional currently...)
-     --set-id <colname>      Set the id column name ('id' is default 
-	                          column name.)
      --librarify             Create a library out of db-minishell for use
                              within a shell script.
      --libname <name>        Create the library with a name <name>.
@@ -104,8 +107,7 @@ General Options:
 # Globals
 #-----------------------------------------------------#
 
-# CREATE_LIB	--- Always need at least this line.
-
+# [ CREATE LIB	] 
 # Die if no arguments received.
 if [ -z $DO_LIBRARIFY ]
 then
@@ -131,6 +133,7 @@ else
 	# Use something as a log file.
 	LOGFILE="/dev/stderr"
 fi
+# [ CREATE LIB	] END
 
 
 # Arrays
@@ -416,17 +419,15 @@ then
 	printf "\n}\n"
 fi
 
-# ...
-if [ ! -z $DO_SHOW_TABLES ]
-then
-	$SQLITE $DB '.tables'
-fi
 
-# ...
-if [ ! -z $DO_GET_DATATYPES ]
-then
-	get_datatypes
-fi
+# Retrieve tables. 
+[ ! -z $DO_SHOW_TABLES ] && $SQLITE $DB '.tables'
+	
+
+
+# Retrieve datatypes
+[ ! -z $DO_GET_DATATYPES ] && get_datatypes
+
 
 # test 
 if [ ! -z $DO_VARDUMP ]
@@ -435,6 +436,7 @@ then
 	#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
 	load_from_db_columns "$QUERY_ARG"
 fi
+
 
 # Send a query onto the db.
 if [ ! -z $DO_SEND_QUERY ]

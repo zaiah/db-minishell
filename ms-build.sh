@@ -28,16 +28,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-----------------------------------------------------#
-PROGRAM="build"
+PROGRAM="ms-build"
 
 # References to $SELF
 BINDIR="$(dirname "$(readlink -f $0)")"
 SELF="$(readlink -f $0)"
+FILE="$BINDIR/db-minishell.sh"
 source $BINDIR/lib/__.sh
 
 # Static
 LS="$(which ls 2>/dev/null)"
 CAT="$(which cat 2>/dev/null)"
+
+# Markers
+MKR_CREATE_LIB="# [ CREATE LIB ]"
+MKR_ORM="# [ ORM ]"
+MKR_ADMIN="# [ ADMIN ]"
 
 # usage() - Show usage message and die with $STATUS
 usage() {
@@ -171,6 +177,16 @@ then
 		THESE="$(break_list_by_delim $THESE)"
 	}
 
+	# Generate a license and library name.
+	sed -n 2,30p $FILE
+
+	# If nothing else is excluded, then just '# CREATE_LIB'
+	[ -z "$LIB_NAME" ] && LIB_NAME="db_minishell"
+
+	# Basic libstuff.
+	printf "${LIB_NAME}() {\n"
+	printf "\tDO_LIBRARIFY=true\n"
+
 	# Concatenate
 	for n in $BINDIR/{lib,minilib}/*
 	do
@@ -183,19 +199,7 @@ then
 		printf "\n\n" | $CAT $n -
 	done
 
-	exit
 	# Only take needed options and actions from the code.
-
-	# Find first instance of x 
-	# If nothing else is excluded, then just '# CREATE_LIB'
-	[ -z "$LIB_NAME" ] && LIB_NAME="db_minishell"
-
-	# Generate a license.
-	sed -n 2,30p $SELF 
-
-	# Basic libstuff.
-	printf "${LIB_NAME}() {\n"
-	printf "\tDO_LIBRARIFY=true\n"
 
 	# Let's give some options to make certain things simpler.
 	# Like if we're just using one database.
@@ -206,15 +210,15 @@ then
 	# on the fly with this.
 
 	# Beginning of our range.
-	CAT_START=$(( $(grep --line-number '# CREATE_LIB' $SELF | \
+	CAT_START=$(( $(grep --line-number "$MKR_CREATE_LIB" $FILE | \
 		head -n 1 | \
 		awk -F ':' '{print $1}') + 1 ))
 
 	# End of our range.
-	CAT_END=$(wc -l $SELF | awk '{print $1}')
+	CAT_END=$(wc -l $FILE | awk '{print $1}')
 
 	# Output the document.
-	sed -n ${CAT_START},${CAT_END}p $SELF | sed 's/^/\t/' 
+	sed -n ${CAT_START},${CAT_END}p $FILE | sed 's/^/\t/' 
 
 	# Wrap last statement.
 	printf "\n}\n"
