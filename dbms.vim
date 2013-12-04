@@ -11,7 +11,9 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
   __.sh
   break_list_by_delim.sh
   break_maps_by_delim.sh
+  eval_flags.sh
   installation.sh
+  is_element_present_in.sh
   tmp_file.sh
  }
  minilib=minilib {
