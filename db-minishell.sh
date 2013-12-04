@@ -3,7 +3,8 @@
 # db-minishell
 #
 # Manages simple SQL queries via Bash.
-#
+#-----------------------------------------------------#
+#-----------------------------------------------------#
 # ---------
 # Licensing
 # ---------
@@ -54,6 +55,7 @@ usage() {
 	[ - ]
 
 Read functions:
+-d | --database <arg>        Choose a database to work with. 
 -s | --select <arg>          Select <arg> columns from a table. 
      --distinct <arg>        Select distinct rows from a table. 
      --limit <arg>           Limit result set.
@@ -61,35 +63,39 @@ Read functions:
      --having <arg>          Having ?
      --order-by [asc|desc]   Order the rows.
 -b | --between <arg>         Use the BETWEEN clause.
-                             Format: <col>=<min>-<max>
+                             (<arg> should follow the format: <col>=<min>-<max>)
 -f | --from <arg>            If \$__TABLE not set, set this to choose a
                              table to use in a SELECT statement.
 -w | --where <arg>           Supply a WHERE clause to tune result set. 
 -o | --or <arg>              Supply an OR clause to tune result set. 
 -z | --id <arg>              Retrieve only an id.
 -sa| --show-as <arg>         Choose a serialization type.
-                             ( line, 
+                             ( line, html, col are acceptable choices )
+
 
 Administrative Functions:
--d | --database <arg>        Choose a database to work with. 
--c | --columns <arg>         List the columns in a table <arg>. 
-     --tables                List the tables in a database.
-     --schemata <name>       Create the library with a name <name>.
-                             (Not functional currently...)
+-c | --columns               List the columns of tables within database.
+-dt| --datatypes             List dataypes of all columns of all tables in database.
+     --schemata              List schema for all tables in database.
+     --of <arg>              Specifies a table to use to limit output of 
+                             --columns and --datatypes commands.
+     --tables                List all tables in a database.
      --set-id <colname>      Set the id column name ('id' is default 
 	                          column name.)
+     --vardump               List results as a variable dump.
+
 
 Update Functions:
--i | --write <arg>           Commit records in <arg> to database. 
-     --insert <arg>          Synonym for --write.
-     --insert-from-mem       Craft and commit statement from variables.
+-i | --insert <arg>          Commit records in <arg> to database. 
+-t | --into <arg>            Choose a table to insert into when using --insert.
+     --insert-from-mem       Craft and commit statement from variables within
+                             a script.
 -u | --update <arg>          If \$__TABLE not set, set this to choose a
                              table to use in an UPDATE statement.
 -e | --set <arg>             Set <column> = <value>
--r | --remove                Remove entry or entries depending on clause. 
-     --delete                Synonym for --remove
--x | --remove-where <arg>    Remove entry or entries depending on <arg>.
-     --delete-where <arg>    Synonym for --remove
+-r | --delete                Delete entry or entries depending on clause. 
+-x | --remove-where <arg>    Delete entry or entries depending on <arg>.
+
 
 General Options:
      --librarify             Create a library out of db-minishell for use
@@ -147,27 +153,33 @@ declare -a OR_X_AND			# Is it an OR or AND clause?
 while [ $# -gt 0 ]
 do
 	case "$1" in
-		# [ ORM ] 
-		-b|--between)
+		-d|--database)
 			shift
-			__BETWEEN="$1"
+			DB="$1"
 		;;
 
+		# [ ADMIN ]
 		-c|--columns)
 			DO_GET_COLUMNS=true
 			shift
 			__TABLE="$1"
 		;;
 
-		# Serialization would save a ton of time....
-		# tables for bash
+		-dt|--datatypes)
+			DO_GET_DATATYPES=true
+		;;
 
-#     -y|--types)
-#         DO_GET_COLUMN_TYPES=true
-#			shift
-#			__TABLE="$1"
-#		;;
+		--tables)
+			DO_SHOW_TABLES=true
+		;;
 
+		--of)
+			shift
+			__TABLE="$1"
+		;;
+		# [ ADMIN ] END
+
+		# [ ORM ] 
 		-s|--select)
 			DO_SEND_QUERY=true
 			DO_SELECT=true
@@ -181,6 +193,13 @@ do
 			__TABLE="$1"
 		;;
 
+		-i|--insert)
+			DO_SEND_QUERY=true
+			DO_WRITE=true
+			shift
+			WRITE="$1"
+		;;
+
 		-t|--into)
 			shift
 			__TABLE="$1"
@@ -190,19 +209,6 @@ do
 			DO_SEND_QUERY=true
 			DO_WRITE=true
 			DO_WRITE_FROM_MEM=true
-		;;
-
-
-		-sa|--show-as)
-			shift
-			SERIALIZATION_TYPE="$1"
-		;;
-
-		-i|--write|--insert)
-			DO_SEND_QUERY=true
-			DO_WRITE=true
-			shift
-			WRITE="$1"
 		;;
 
 		-u|--update)
@@ -221,6 +227,16 @@ do
 				$__EXIT__ 1
 			fi
 			[ -z "$SET" ] && SET="$1" || SET="$SET|$1"
+		;;
+
+		-r|--remove)
+			DO_SEND_QUERY=true
+			DO_REMOVE=true
+		;;
+
+		-b|--between)
+			shift
+			__BETWEEN="$1"
 		;;
 
 		-o|--or)
@@ -254,24 +270,17 @@ do
 			fi
 			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
 		;;
+		# [ ORM ] END
 
-		-r|--remove|--delete)
-			DO_SEND_QUERY=true
-			DO_REMOVE=true
-		;;
-		# [ ORM ] 
-
-		# [ ADMIN ] 
-		-dt|--datatypes)
-			DO_GET_DATATYPES=true
-		;;
-
-		-d|--database)
+		# [ SERIALIZATION ]
+		-sa|--show-as)
 			shift
-			DB="$1"
+			SERIALIZATION_TYPE="$1"
 		;;
+		# [ SERIALIZATION ] END
 
-		--id)
+		# [ EXTENSIONS ]
+		-z|--id)
 			DO_SEND_QUERY=true
 			DO_ID=true
 			OR_X_AND[${#OR_X_AND[@]}]="and"
@@ -290,55 +299,44 @@ do
 			ID_IDENTIFIER="$1"
 		;;
 
-		--tables)
-			DO_SHOW_TABLES=true
-		;;
 
 		--vardump)
 			DO_VARDUMP=true
 			shift
 			QUERY_ARG="$1"
 		;;
-		# [ ADMIN ] 
+		# [ EXTENSIONS ] END
 
-		# I figured out how to do this...
-		--install|--librarify|--libname|--verbose|--help)
-			if [ -z $DO_LIBRARIFY ]
-			then
-				case "$1" in
-				--install)
-						DO_INSTALL=true
-						shift
-						INSTALL_DIR=$1
-					;;
+		# [ SYSTEM ] 
+	 	--install)
+			 DO_INSTALL=true
+			 shift
+			 INSTALL_DIR=$1
+		 ;;
 
-				--librarify)
-						CREATE_LIB=true
-					;;
+	 	--librarify)
+			 CREATE_LIB=true
+		 ;;
 
-				-l|--libname)
-						CREATE_LIB=true
-						shift
-						LIB_CRNAME="$1"		
-					;;
-				-v|--verbose)
-					VERBOSE=true
-				;;
+	 	-l|--libname)
+			 CREATE_LIB=true
+			 shift
+			 LIB_CRNAME="$1"		
+		 ;;
+	 	-v|--verbose)
+		 VERBOSE=true
+	 	;;
 
-				-h|--help)
-					$__EXIT__ 0
-				;;
-				esac
-			else
-				break
-			fi
-		;;
+	 	-h|--help)
+		 $__EXIT__ 0
+	 	;;
+		# [ SYSTEM ] END
 
 		--) break;;
 
 		-*)
-		printf "Unknown argument received.\n";
-		$__EXIT__ 1
+			printf "Unknown argument received.\n";
+			$__EXIT__ 1
 		;;
 
 		*) break;;

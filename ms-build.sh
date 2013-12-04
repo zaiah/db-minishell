@@ -41,9 +41,12 @@ LS="$(which ls 2>/dev/null)"
 CAT="$(which cat 2>/dev/null)"
 
 # Markers
-MKR_CREATE_LIB="# [ CREATE LIB ]"
-MKR_ORM="# [ ORM ]"
-MKR_ADMIN="# [ ADMIN ]"
+MKR_CRE="[ CREATE LIB ]"
+MKR_ORM="[ ORM ]"
+MKR_ADM="[ ADMIN ]"
+MKR_SER="[ SERIALIZATION ]"
+MKR_EXT="[ EXTENSIONS ]"
+MKR_SYS="[ SYSTEM ]"
 
 # usage() - Show usage message and die with $STATUS
 usage() {
@@ -201,16 +204,9 @@ then
 
 	# Only take needed options and actions from the code.
 
-	# Let's give some options to make certain things simpler.
-	# Like if we're just using one database.
-
-	# Or if we plan to only use one table.
-
-	# The term will change, but libraries and functions can be incldued
-	# on the fly with this.
-
+	# Loop through an array, according to what was thrown above...
 	# Beginning of our range.
-	CAT_START=$(( $(grep --line-number "$MKR_CREATE_LIB" $FILE | \
+	CAT_START=$(( $(grep --line-number "$MKR_CRE" $FILE | \
 		head -n 1 | \
 		awk -F ':' '{print $1}') + 1 ))
 
