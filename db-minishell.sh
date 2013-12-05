@@ -50,7 +50,6 @@ SQLITE="/usr/bin/sqlite3"
 
 
 # usage() - Show usage message and die with $STATUS
-# -y | --datatypes <arg>        List the column datatypes in a table <arg>. 
 usage() {
    STATUS="${1:-0}"
    echo "Usage: ./${PROGRAM}
@@ -142,13 +141,11 @@ else
 	LOGFILE="/dev/stderr"
 fi
 
-
 # Arrays
 declare -a WHERE_CLAUSE 
 declare -a NOT_CLAUSE 
 declare -a OR_X_AND			# Is it an OR or AND clause?
-# [ LOCAL ]	END
-
+# [ LOCAL ] END
 
 # [ OPTS ] 
 # Process options.
@@ -272,14 +269,12 @@ do
 			fi
 			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
 		;;
-		# [ ORM ] END
 
-		# [ SERIALIZATION ]
 		-sa|--show-as)
 			shift
 			SERIALIZATION_TYPE="$1"
 		;;
-		# [ SERIALIZATION ] END
+		# [ ORM ] END
 
 		# [ EXTENSIONS ]
 		-z|--id)
@@ -301,7 +296,6 @@ do
 			ID_IDENTIFIER="$1"
 		;;
 
-
 		--vardump)
 			DO_VARDUMP=true
 			shift
@@ -316,22 +310,13 @@ do
 			 INSTALL_DIR=$1
 		 ;;
 
-	 	--librarify)
-			 CREATE_LIB=true
-		 ;;
-
-	 	-l|--libname)
-			 CREATE_LIB=true
-			 shift
-			 LIB_CRNAME="$1"		
-		 ;;
 	 	-v|--verbose)
-		 VERBOSE=true
-	 	;;
+			 VERBOSE=true
+	 	 ;;
 
 	 	-h|--help)
-		 $__EXIT__ 0
-	 	;;
+		 	 $__EXIT__ 0
+	 	 ;;
 		# [ SYSTEM ] END
 
 		--) break;;
@@ -347,20 +332,27 @@ do
 done
 # [ OPTS ] END
 
-
+# [ CODE ]
 # Set table properly.
 [ ! -z "$TABLE" ] && __TABLE="$TABLE"
 
+# [ SYSTEM ]
+# Install
+[ ! -z $DO_INSTALL ] && {
+	[ -z "$INSTALL_DIR" ] && printf "No install dir specified!" && $__EXIT__ 1	
+	installation --do --this "db-minishell" --to $INSTALL_DIR
+}
+# [ SYSTEM ] END
 
+# [ ADMIN ]
 # get a column listing 
-if [ ! -z $DO_GET_COLUMNS ]
-then
+[ ! -z $DO_GET_COLUMNS ] && {
 	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
 
 	# Anywhere a __TABLE is present, check the first chars and make
 	# sure they're not flags.
 	get_columns
-fi
+}
 
 
 # get a datatype listing 
@@ -371,75 +363,21 @@ then
 fi
 
 
-# Install
-if [ ! -z $DO_INSTALL ] 
-then
-	if [ -f "$INSTALL_DIR/$(basename ${SELF%%.sh})" ] 
-	then
-		echo "$PROGRAM already is installed at $INSTALL_DIR"
-		$__EXIT__ 1
-	fi
-	[ -d "$INSTALL_DIR" ] && ln -s "$SELF" "$INSTALL_DIR/$(basename ${SELF%%.sh})"
-fi
-
-
-# spit out a library of this with needed functionality. 
-if [ ! -z $CREATE_LIB ] 
-then
-	# Find first instance of x 
-	# If nothing else is excluded, then just '# CREATE_LIB'
-	[ -z "$LIB_CRNAME" ] && LIB_CRNAME="db_minishell"
-
-	# Generate a license.
-	sed -n 2,30p $SELF 
-
-	# Basic libstuff.
-	printf "${LIB_CRNAME}() {\n"
-	printf "\tDO_LIBRARIFY=true\n"
-
-	# Let's give some options to make certain things simpler.
-	# Like if we're just using one database.
-
-	# Or if we plan to only use one table.
-
-	# The term will change, but libraries and functions can be incldued
-	# on the fly with this.
-
-	# Beginning of our range.
-	CAT_START=$(( $(grep --line-number '# CREATE_LIB' $SELF | \
-		head -n 1 | \
-		awk -F ':' '{print $1}') + 1 ))
-
-	# End of our range.
-	CAT_END=$(wc -l $SELF | awk '{print $1}')
-
-	# Output the document.
-	sed -n ${CAT_START},${CAT_END}p $SELF | sed 's/^/\t/' 
-
-	# Wrap last statement.
-	printf "\n}\n"
-fi
-
-
 # Retrieve tables. 
 [ ! -z $DO_SHOW_TABLES ] && $SQLITE $DB '.tables'
-	
 
 
 # Retrieve datatypes
 [ ! -z $DO_GET_DATATYPES ] && get_datatypes
+# [ ADMIN ] END
 
-
+# [ EXTENSIONS ]
 # test 
-if [ ! -z $DO_VARDUMP ]
-then
-	#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
-	#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
-	load_from_db_columns "$QUERY_ARG"
-fi
-
+[ ! -z $DO_VARDUMP ]	&& load_from_db_columns "$QUERY_ARG"
+# [ EXTENSIONS ] END
 
 # Send a query onto the db.
+# [ ORM ]
 if [ ! -z $DO_SEND_QUERY ]
 then
 	# Make sure that we've actually asked for a clause.
@@ -464,6 +402,7 @@ then
 	# e.g. RAM = ram, and reorganize so that query writes correctly...
 	# 2. pull vars from command line (with key=value pairs)
 	# ram=$RAM 
+	# Give an error on columns that can't be empty.
 	if [ ! -z $DO_WRITE ]
 	then
 		# Write from global variables mapped to column names.
@@ -578,8 +517,7 @@ then
 	[ ! -z "$CLAUSE" ] || [ ! -z "$__BETWEEN" ] && assemble_clause
 
 	# select
-	if [ ! -z $DO_SELECT ]
-	then
+	[ ! -z $DO_SELECT ] && {
 		# Evaluate for a serialization type.
 		[ ! -z "$SERIALIZATION_TYPE" ] && {
 			case "$SERIALIZATION_TYPE" in
@@ -590,37 +528,23 @@ then
 			esac
 		}
 
-		# Headers?
 		# Select all the records asked for.
-
-		# From this function, if I want "prefilled" values,
-		# then I'll have to work at it.
 		$SQLITE $DB $SR_TYPE "SELECT $SELECT FROM ${__TABLE}${STMT}"
-
-		# This is the only place where serialization is even an intelligent choice.
-	fi
+	}	
 
 	# select only id
-	if [ ! -z $DO_ID ]
-	then
-		# Select all the records asked for.
-		$SQLITE $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
-	fi
-
+	# Select all the records asked for.
+	[ ! -z $DO_ID ] && $SQLITE $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
+	
 	# update
-	if [ ! -z $DO_UPDATE ]
-	then
+	[ ! -z $DO_UPDATE ] && {
 		# Compound your SET statements, same rules apply as in regular statment
 		assemble_set
 		$SQLITE $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
-	fi
-
+	}	
 
 	# remove
-	if [ ! -z $DO_REMOVE ]
-	then
-		#$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
-		$SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
-	fi
-
-fi # END [ DO_SEND_QUERY ]
+	[ ! -z $DO_REMOVE ] && $SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
+fi 
+# [ ORM ] END
+# [ CODE ] END

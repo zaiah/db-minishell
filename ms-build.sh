@@ -36,6 +36,10 @@ SELF="$(readlink -f $0)"
 FILE="$BINDIR/db-minishell.sh"
 source $BINDIR/lib/__.sh
 
+# Just for this build.
+source $BINDIR/buildlib/pick_off.sh
+source $BINDIR/buildlib/parse_range.sh
+
 # Static
 LS="$(which ls 2>/dev/null)"
 CAT="$(which cat 2>/dev/null)"
@@ -46,23 +50,32 @@ WC="$(which wc 2>/dev/null)"
 PRINTF="$(which printf 2>/dev/null)"
 DEPS=( "$GREP" "$LS" "$CAT" "$SED" "$AWK" "$WC" "$PRINTF" )
 
+# Test shell
+TEST_SHELL="$(which bash 2>/dev/null)"
+[ -z $TEST_SHELL ] && { 
+	printf "How can this be?  Bash does not exist on your system?"
+	exit 1
+}
 
-# Markers
+# Project Markers 
 MKR_LIC="[ LICENSE ]"
 MKR_OPT="[ OPTS ]"
+MKR_COD="[ CODE ]"
 
+# Subroutine Markers.
 MKR_LOC="[ LOCAL ]"
 MKR_ORM="[ ORM ]"
 MKR_ADM="[ ADMIN ]"
 MKR_SER="[ SERIALIZATION ]"
 MKR_EXT="[ EXTENSIONS ]"
 MKR_SYS="[ SYSTEM ]"
+MKR_ALL=( "MKR_LOC" "MKR_ORM" "MKR_ADM" "MKR_SER" "MKR_EXT" "MKR_SYS" )
 
 # usage() - Show usage message and die with $STATUS
 usage() {
    STATUS="${1:-0}"
    echo "Usage: ./${PROGRAM}
-	[ -  ]
+	[ -bnwielarsto <args> ]
 
 -b | --library                Amalgamates the code base as a library. 
                               (Does not include usage, installation, etc.)
@@ -73,8 +86,13 @@ usage() {
 -l | --list-parts             List the parts that comprise the library.
 -a | --admin                  Only build the parts needed for administrating 
                               a SQLite 3 database.
--o | --orm                    Only build the parts needed for querying a 
+-r | --orm                    Only build the parts needed for querying a 
                               SQLite 3 database.
+-s | --stdout                 Output library to stdout versus a temporary file.
+                              ( Default. )
+-t | --at <arg>               Place the new library within this file <arg>.
+-o | --omit <arg>             Omit anything within <arg>
+                              [ license, summary ]
 -v | --verbose                Be verbose in output.
 -h | --help                   Show this help and quit.
 "
@@ -121,9 +139,20 @@ do
          DO_PACK=true
          DO_ADMIN=true
       ;;
-     -o|--orm)
+     -r|--orm)
          DO_PACK=true
          DO_ORM=true
+      ;;
+     -s|--stdout)
+        TO_STDOUT=true
+      ;;
+     -t|--at)
+		  shift
+		  PACK_LIB_AT="$1"
+      ;;
+     -o|--omit)
+		  shift
+		  OMIT_THESE="$1"
       ;;
      -v|--verbose)
         VERBOSE=true
@@ -144,39 +173,28 @@ done
 
 DELIM=","
 
+# Break up any omissions.
+[ ! -z "$OMIT_THESE" ] && {
+	OMISSIONS=( $(break_list_by_delim "$OMIT_THESE") )
+	for EACH_OM in ${OMISSIONS[@]}
+	case "$EACH_OM" in
+		comments) NO_COMMENTS=true ;;
+		license) NO_LICENSE=true ;;
+	esac
+}
 
 # list the different parts.
-if [ ! -z $DO_LIST_PARTS ]
-then
-	$LS --color $BINDIR/{lib,minilib}
-fi
+[ ! -z $DO_LIST_PARTS ] && $LS --color $BINDIR/{lib,minilib}
 
 # library
 if [ ! -z $DO_PACK ]
 then
 	# Whole needs no options.
-	[ ! -z $DO_WHOLE ] && {
-		PARSE=( 
-			MKR_LOC 
-			MKR_ORM
-			MKR_ADM
-			MKR_SER
-			MKR_EXT
-			MKR_SYS
-		)
-	}
-
+	# [ ! -z $DO_WHOLE ] && { }
+		
 	# Library
 	[ ! -z $DO_LIBRARY ] && {
 		EXCLUDE=("installation" "eval_flags" "is_element_present_in")
-		PARSE=( 
-			MKR_LOC 
-			MKR_ORM
-			MKR_ADM
-			MKR_SER
-			MKR_EXT
-		)
-
 		UNPARSE=(
 			MKR_SYS
 		)
@@ -193,9 +211,11 @@ then
 			"convert"
 			"chop_by_position"
 		)
-		PARSE=( 
-			MKR_LOC 
-			MKR_ADM
+		UNPARSE=(
+			MKR_ORM
+			MKR_SER
+			MKR_EXT
+			MKR_SYS
 		)
 	}
 
@@ -208,11 +228,9 @@ then
 			"get_columns"
 			"get_datatypes"
 		)
-		PARSE=( 
-			MKR_LOC 
-			MKR_ORM
-			MKR_SER
-			MKR_EXT
+		UNPARSE=(
+			MKR_ADM
+			MKR_SYS
 		)
 	}
 
@@ -221,49 +239,66 @@ then
 		THESE="$(break_list_by_delim $THESE)"
 	}
 
-	# Generate a license and library name.
-	# sed -n 2,31p $FILE
-	parse_range -f $MKR_LIC -t "$MKR_LIC END" -w $FILE
+	# Generate a temporary file for the new library.
+	tmp_file -n LIBTMP
+	LIBFN="$LIBTMP"
+	[ ! -z "$PACK_LIB_AT" ] && LIB_FINAL="$PACK_LIB_AT" || LIB_FINAL="/dev/stdout"
 
-	# If nothing else is excluded, then just '# CREATE_LIB'
-	[ -z "$LIB_NAME" ] && LIB_NAME="db_minishell"
+	# Generate the code for the library.
+	( 
+		# Generate a license if asked for.
+		[ -z "$NO_LICENSE" ] && parse_range -f "$MKR_LIC" -t "$MKR_LIC END" -w $FILE
 
-	# Basic libstuff.
-	printf "${LIB_NAME}() {\n"
-	printf "\tDO_LIBRARIFY=true\n"
+		# Generate the library name.
+		[ -z "$LIB_NAME" ] && LIB_NAME="db_minishell"
+		printf "${LIB_NAME}() {\n"
+		printf "\t# Enable library.\n"
+		printf "\tDO_LIBRARIFY=true\n\n"
 
-	# Concatenate any external functions.
-	for n in $BINDIR/{lib,minilib}/*
-	do
-		# Don't add if we've excluded.
-		N=$(basename ${n%%.sh})
-		[[ $N == "__" ]] || [[ $(is_this_in "EXCLUDE" "$N") == true ]] && {
-			continue
-		}
+		# Concatenate any external functions.
+		for n in $BINDIR/{lib,minilib}/*
+		do
+			# Don't add if excluded.
+			N=$(basename ${n%%.sh})
+			[[ $N == "__" ]] || [[ $(is_this_in "EXCLUDE" "$N") == true ]] && {
+				continue
+			}
 
-		# Output the code.
-		printf "\n\n" | $CAT $n - | grep -v '#!/bin/bash' | sed 's/^/\t/g'
-	done
+			# Output the code.
+			printf "\n\n" | $CAT $n - | grep -v '#!/bin/bash' | sed 's/^/\t/g'
+		done 
 
-	# Process needed options by extracting from temporary file.
-	tmp_file -n DD
-	parse_range -f $MKR_LIC -t "$MKR_LIC END" -w $FILE > $DD
+		# Cycle through options and real code.
+		pick_off "$MKR_OPT"
+		pick_off "$MKR_COD"
 
-	# Only take needed options and actions from the code.
-	# Loop through an array, according to what was thrown above...
-	# Beginning of our range.
-	for EACH_MKR in ${PARSE[@]}
-	do
-		# Define the marker.
-		MKR="${!EACH_MKR}"
+		# Wrap up the function. 
+		printf "\n}\n"
+	) > $LIBFN
 
-		# Remove the portions not asked for.
-		sed -i "s/$(parse_range -f $MKR -t "$MKR END" -w $FILE)//" $DD
-		#sed -n ${CAT_START},${CAT_END}p $FILE | sed 's/^/\t/' #> $TMPFILE
-	done
+	# Remove comments if asked for.
+	[ ! -z $NO_COMMENTS ] && printf > /dev/null
 
-	# Wrap last statement.
-	printf "\n}\n"
+	# Test by loading once.
+	tmp_file -n FERR
+	$TEST_SHELL $LIBFN 2>$FERR
+	[ ! $(wc -c $FERR | awk '{print $1}') -eq 0 ] && {
+		( 
+			printf "Something went wrong when creating the db_minishell library.\n"
+			printf "Please try again or check if any features that were added are not interpreted correctly by the shell.\n" 
+			printf "\n"
+			printf "Error is as follows:\n"
+			printf "====================\n"
+			cat $FERR
+		) > /dev/stderr
+
+		rm $FERR
+		tmp_file -w
+		exit 1
+	}
+
+	# Create the library.
+	cp $CP_FLAGS $LIBFN $LIB_FINAL
 fi
 
 # Clean up.
