@@ -1,4 +1,5 @@
 #!/bin/bash -
+# [ LICENSE ] 
 #-----------------------------------------------------#
 # db-minishell
 #
@@ -29,6 +30,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #-----------------------------------------------------#
+# [ LICENSE ] END
 PROGRAM="db-minishell"
 
 # References to $SELF
@@ -113,7 +115,7 @@ General Options:
 # Globals
 #-----------------------------------------------------#
 
-# [ CREATE LIB	] 
+# [ LOCAL ] 
 # Die if no arguments received.
 if [ -z $DO_LIBRARIFY ]
 then
@@ -139,17 +141,17 @@ else
 	# Use something as a log file.
 	LOGFILE="/dev/stderr"
 fi
-# [ CREATE LIB	] END
 
 
 # Arrays
 declare -a WHERE_CLAUSE 
 declare -a NOT_CLAUSE 
 declare -a OR_X_AND			# Is it an OR or AND clause?
+# [ LOCAL ]	END
 
 
+# [ OPTS ] 
 # Process options.
-# Can use a DO_LIB to evaluate which list to show...
 while [ $# -gt 0 ]
 do
 	case "$1" in
@@ -343,6 +345,7 @@ do
 	esac
 	shift
 done
+# [ OPTS ] END
 
 
 # Set table properly.

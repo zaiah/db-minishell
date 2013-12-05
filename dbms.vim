@@ -1,14 +1,15 @@
 
 dbm=/home/zaiah/projects/db_minishell CD=. {
  README.md
- build.sh
  db-minishell.sh
  db.sh
  dbm-old.sh
  dbms.vim
- library.sh
+ ms-build.sh
+ ms-test.sh
  lib=lib {
   __.sh
+  parse_range.sh
   break_list_by_delim.sh
   break_maps_by_delim.sh
   eval_flags.sh

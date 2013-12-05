@@ -39,9 +39,19 @@ source $BINDIR/lib/__.sh
 # Static
 LS="$(which ls 2>/dev/null)"
 CAT="$(which cat 2>/dev/null)"
+GREP="$(which grep 2>/dev/null)"
+SED="$(which sed 2>/dev/null)"
+AWK="$(which awk 2>/dev/null)"
+WC="$(which wc 2>/dev/null)"
+PRINTF="$(which printf 2>/dev/null)"
+DEPS=( "$GREP" "$LS" "$CAT" "$SED" "$AWK" "$WC" "$PRINTF" )
+
 
 # Markers
-MKR_CRE="[ CREATE LIB ]"
+MKR_LIC="[ LICENSE ]"
+MKR_OPT="[ OPTS ]"
+
+MKR_LOC="[ LOCAL ]"
 MKR_ORM="[ ORM ]"
 MKR_ADM="[ ADMIN ]"
 MKR_SER="[ SERIALIZATION ]"
@@ -145,10 +155,31 @@ fi
 if [ ! -z $DO_PACK ]
 then
 	# Whole needs no options.
+	[ ! -z $DO_WHOLE ] && {
+		PARSE=( 
+			MKR_LOC 
+			MKR_ORM
+			MKR_ADM
+			MKR_SER
+			MKR_EXT
+			MKR_SYS
+		)
+	}
 
 	# Library
 	[ ! -z $DO_LIBRARY ] && {
 		EXCLUDE=("installation" "eval_flags" "is_element_present_in")
+		PARSE=( 
+			MKR_LOC 
+			MKR_ORM
+			MKR_ADM
+			MKR_SER
+			MKR_EXT
+		)
+
+		UNPARSE=(
+			MKR_SYS
+		)
 	}
 
 	# Admin only
@@ -162,6 +193,10 @@ then
 			"convert"
 			"chop_by_position"
 		)
+		PARSE=( 
+			MKR_LOC 
+			MKR_ADM
+		)
 	}
 
 	# ORM only
@@ -173,6 +208,12 @@ then
 			"get_columns"
 			"get_datatypes"
 		)
+		PARSE=( 
+			MKR_LOC 
+			MKR_ORM
+			MKR_SER
+			MKR_EXT
+		)
 	}
 
 	# Exclude or Include certain ones.
@@ -181,7 +222,8 @@ then
 	}
 
 	# Generate a license and library name.
-	sed -n 2,30p $FILE
+	# sed -n 2,31p $FILE
+	parse_range -f $MKR_LIC -t "$MKR_LIC END" -w $FILE
 
 	# If nothing else is excluded, then just '# CREATE_LIB'
 	[ -z "$LIB_NAME" ] && LIB_NAME="db_minishell"
@@ -190,7 +232,7 @@ then
 	printf "${LIB_NAME}() {\n"
 	printf "\tDO_LIBRARIFY=true\n"
 
-	# Concatenate
+	# Concatenate any external functions.
 	for n in $BINDIR/{lib,minilib}/*
 	do
 		# Don't add if we've excluded.
@@ -198,24 +240,31 @@ then
 		[[ $N == "__" ]] || [[ $(is_this_in "EXCLUDE" "$N") == true ]] && {
 			continue
 		}
-		
-		printf "\n\n" | $CAT $n -
+
+		# Output the code.
+		printf "\n\n" | $CAT $n - | grep -v '#!/bin/bash' | sed 's/^/\t/g'
 	done
 
-	# Only take needed options and actions from the code.
+	# Process needed options by extracting from temporary file.
+	tmp_file -n DD
+	parse_range -f $MKR_LIC -t "$MKR_LIC END" -w $FILE > $DD
 
+	# Only take needed options and actions from the code.
 	# Loop through an array, according to what was thrown above...
 	# Beginning of our range.
-	CAT_START=$(( $(grep --line-number "$MKR_CRE" $FILE | \
-		head -n 1 | \
-		awk -F ':' '{print $1}') + 1 ))
+	for EACH_MKR in ${PARSE[@]}
+	do
+		# Define the marker.
+		MKR="${!EACH_MKR}"
 
-	# End of our range.
-	CAT_END=$(wc -l $FILE | awk '{print $1}')
-
-	# Output the document.
-	sed -n ${CAT_START},${CAT_END}p $FILE | sed 's/^/\t/' 
+		# Remove the portions not asked for.
+		sed -i "s/$(parse_range -f $MKR -t "$MKR END" -w $FILE)//" $DD
+		#sed -n ${CAT_START},${CAT_END}p $FILE | sed 's/^/\t/' #> $TMPFILE
+	done
 
 	# Wrap last statement.
 	printf "\n}\n"
 fi
+
+# Clean up.
+tmp_file -w
