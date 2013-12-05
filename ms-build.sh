@@ -177,10 +177,12 @@ DELIM=","
 [ ! -z "$OMIT_THESE" ] && {
 	OMISSIONS=( $(break_list_by_delim "$OMIT_THESE") )
 	for EACH_OM in ${OMISSIONS[@]}
-	case "$EACH_OM" in
-		comments) NO_COMMENTS=true ;;
-		license) NO_LICENSE=true ;;
-	esac
+	do
+		case "$EACH_OM" in
+			comments) NO_COMMENTS=true ;;
+			license) NO_LICENSE=true ;;
+		esac
+	done
 }
 
 # list the different parts.
