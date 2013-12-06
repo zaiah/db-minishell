@@ -9,7 +9,6 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
  ms-test.sh
  lib=lib {
   __.sh
-  parse_range.sh
   break_list_by_delim.sh
   break_maps_by_delim.sh
   eval_flags.sh
