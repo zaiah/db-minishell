@@ -58,6 +58,7 @@ usage() {
 Read functions:
 -d | --database <arg>        Choose a database to work with. 
 -s | --select <arg>          Select <arg> columns from a table. 
+     --select-all            Select all columns from a table. 
      --distinct <arg>        Select distinct rows from a table. 
      --limit <arg>           Limit result set.
      --offset <arg>          Use an offset when using the limit.
@@ -184,6 +185,12 @@ do
 			DO_SELECT=true
 			shift
 			SELECT="$1"
+		;;
+
+		--select-all)
+			DO_SEND_QUERY=true
+			DO_SELECT=true
+			SELECT="*"
 		;;
 
 		-f|--from)
