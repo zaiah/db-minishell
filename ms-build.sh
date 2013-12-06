@@ -179,8 +179,9 @@ DELIM=","
 	for EACH_OM in ${OMISSIONS[@]}
 	do
 		case "$EACH_OM" in
-			comments) NO_COMMENTS=true ;;
-			license) NO_LICENSE=true ;;
+			c|comments) NO_COMMENTS=true ;;
+			l|license) NO_LICENSE=true ;;
+			d|depedencies) NO_DEPS=true ;;
 		esac
 	done
 }
@@ -258,17 +259,22 @@ then
 		printf "\tDO_LIBRARIFY=true\n\n"
 
 		# Concatenate any external functions.
-		for n in $BINDIR/{lib,minilib}/*
-		do
-			# Don't add if excluded.
-			N=$(basename ${n%%.sh})
-			[[ $N == "__" ]] || [[ $(is_this_in "EXCLUDE" "$N") == true ]] && {
-				continue
-			}
+		[ -z $NO_DEPS ] && {
+			for n in $BINDIR/{lib,minilib}/*
+			do
+				# Don't add if excluded.
+				N=$(basename ${n%%.sh})
+				[[ $N == "__" ]] || [[ $(is_this_in "EXCLUDE" "$N") == true ]] && {
+					continue
+				}
 
-			# Output the code.
-			printf "\n\n" | $CAT $n - | grep -v '#!/bin/bash' | sed 's/^/\t/g'
-		done 
+				# Output the code.
+				printf "\n\n" | $CAT $n - | grep -v '#!/bin/bash' | sed 's/^/\t/g'
+			done 
+		}
+
+		# Include any dependent code.
+		parse_range -f "$MKR_LOC" -t "$MKR_LOC END" -w $FILE | sed 's/^/\t/g'
 
 		# Cycle through options and real code.
 		pick_off "$MKR_OPT"

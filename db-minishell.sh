@@ -42,13 +42,6 @@ PROGRAM="db-minishell"
 }
 
 
-# Other vars
-FIRST_TERM=
-__KEY__=
-__VALUE__=
-SQLITE="/usr/bin/sqlite3"
-
-
 # usage() - Show usage message and die with $STATUS
 usage() {
    STATUS="${1:-0}"
@@ -115,6 +108,9 @@ General Options:
 # Globals
 #-----------------------------------------------------#
 
+# Executables
+#__SQLITE__="$(which sqlite3 2>/dev/null)"
+
 # [ LOCAL ] 
 # Die if no arguments received.
 if [ -z $DO_LIBRARIFY ]
@@ -136,7 +132,7 @@ else
 	[ $# -le 0 ] && $__EXIT__ 1	
 
 	# If SQLite has not previously been defined, define it.
-	[ -z "$SQLITE" ] && SQLITE="$(which sqlite3)" 
+	[ -z "$__SQLITE__" ] && __SQLITE__="$(which sqlite3 2>/dev/null)" 
 
 	# Use something as a log file.
 	LOGFILE="/dev/stderr"
@@ -366,12 +362,12 @@ done
 if [ ! -z $DO_GET_COLUMN_TYPES ]
 then
 	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
-	$SQLITE $DB ".schema ${__TABLE}"
+	$__SQLITE__ $DB ".schema ${__TABLE}"
 fi
 
 
 # Retrieve tables. 
-[ ! -z $DO_SHOW_TABLES ] && $SQLITE $DB '.tables'
+[ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
 
 
 # Retrieve datatypes
@@ -451,12 +447,12 @@ then
 				__INSTR__="$__INSTR__, $__VARVAL__" 
 			done
 		
-			echo "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+			echo "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 			eval "echo \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
-			eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+			eval "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 			# Should probably be careful here.  
 			# Mostly just path stuff to worry about.
-#				eval "$SQLITE $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+#				eval "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 
 		# Allow the ability to craft a more standard INSERT own.
 		else
@@ -516,7 +512,7 @@ then
 			# Writing this recursively would involve knowing where the string is...
 
 			# Just taking a command line dump here.
-			echo $SQLITE $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
+			echo $__SQLITE__ $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
 		fi
 	fi
 
@@ -536,22 +532,22 @@ then
 		}
 
 		# Select all the records asked for.
-		$SQLITE $DB $SR_TYPE "SELECT $SELECT FROM ${__TABLE}${STMT}"
+		$__SQLITE__ $DB $SR_TYPE "SELECT $SELECT FROM ${__TABLE}${STMT}"
 	}	
 
 	# select only id
 	# Select all the records asked for.
-	[ ! -z $DO_ID ] && $SQLITE $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
+	[ ! -z $DO_ID ] && $__SQLITE__ $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
 	
 	# update
 	[ ! -z $DO_UPDATE ] && {
 		# Compound your SET statements, same rules apply as in regular statment
 		assemble_set
-		$SQLITE $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
+		$__SQLITE__ $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
 	}	
 
 	# remove
-	[ ! -z $DO_REMOVE ] && $SQLITE $DB "DELETE FROM ${__TABLE}${STMT}"
+	[ ! -z $DO_REMOVE ] && $__SQLITE__ $DB "DELETE FROM ${__TABLE}${STMT}"
 fi 
 # [ ORM ] END
 # [ CODE ] END
