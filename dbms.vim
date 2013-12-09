@@ -2,12 +2,11 @@
 dbm=/home/zaiah/projects/db_minishell CD=. {
  README.md
  db-minishell.sh
- db.sh
- dbm-old.sh
  dbms.vim
+ genlibs.sh
  ms-build.sh
- ms-test.sh
  ms-test-cli.sh
+ ms-test.sh
  lib=lib {
   __.sh
   break_list_by_delim.sh
@@ -27,8 +26,10 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
   convert.sh
   get_columns.sh
   get_datatypes.sh
+  get_schemata.sh
   load_from_db_columns.sh
   modify_from_db_columns.sh
+  parse_schemata.sh
  }
  buildlib=buildlib {
   no_conflict.sh

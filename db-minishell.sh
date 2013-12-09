@@ -80,11 +80,12 @@ ORM functions:
 
 Administrative Functions:
 -c | --columns               List the columns of tables within database.
+     --tables                List all tables in a database.
+     --tables-and-columns    List both the columns and tables within a database.
 -dt| --datatypes             List dataypes of all columns of all tables in database.
      --schemata              List schema for all tables in database.
      --of <arg>              Specifies a table to use to limit output of 
                              --columns and --datatypes commands.
-     --tables                List all tables in a database.
      --set-id <colname>      Set the id column name ('id' is default 
 	                          column name.)
      --vardump               List results as a variable dump.
@@ -161,6 +162,10 @@ do
 
 		--tables)
 			DO_SHOW_TABLES=true
+		;;
+		
+		--tables-and-columns)
+			DO_SHOW_TABLES_AND_COLUMNS=true
 		;;
 
 		--of)
@@ -370,9 +375,14 @@ do
 done
 # [ OPTS ] END
 
+
 # [ CODE ]
 # Set table properly.
 [ ! -z "$TABLE" ] && __TABLE="$TABLE"
+
+parse_schemata --of $__TABLE --columns
+exit
+
 
 # [ SYSTEM ]
 # Install
@@ -403,6 +413,13 @@ fi
 
 # Retrieve tables. 
 [ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
+
+# Retrieve tables and columns...
+[ ! -z $DO_SHOW_TABLES ] && {
+	for __XX__ in $($__SQLITE__ $DB '.tables')
+	do
+	done
+}
 
 
 # Retrieve datatypes

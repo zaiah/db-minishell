@@ -7,6 +7,11 @@ get_columns() {
 	# Start fresh
 	unset __RESULTBUF__
 
+	# Set some local variables...
+	# Start using arrays for this purpose...
+	# Numbers or something ridiculous to keep things seperate...
+
+
 	# Hold the schema results in the buffer.
 	__RESULTBUF__="$( $__SQLITE__ $DB ".schema ${__TABLE}")"
 

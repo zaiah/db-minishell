@@ -45,7 +45,7 @@ printf "$CALLNAME --limit 10"
 
 # only 10, but start at id 60
 printf "$CALLNAME --limit 10 --offset 60" 
-printf "$CALLNAME --having 10" 
+#printf "$CALLNAME --having 10" 
 printf "$CALLNAME --order-by instance_name" 
 printf "$CALLNAME --having 10" 
 printf "$CALLNAME --where 10" 
