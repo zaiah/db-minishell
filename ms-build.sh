@@ -197,7 +197,11 @@ then
 		
 	# Library
 	[ ! -z $DO_LIBRARY ] && {
-		EXCLUDE=("installation" "eval_flags" "is_element_present_in")
+		EXCLUDE=(
+			"installation" 
+			"eval_flags" 
+			"is_element_present_in"
+		)
 		UNPARSE=(
 			MKR_SYS
 		)
@@ -228,8 +232,7 @@ then
 			"installation"
 			"eval_flags"
 			"is_element_present_in"
-			"get_columns"
-			"get_datatypes"
+			"parse_schemata"
 		)
 		UNPARSE=(
 			MKR_ADM

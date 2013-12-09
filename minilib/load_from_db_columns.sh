@@ -16,7 +16,7 @@ load_from_db_columns() {
 
 	else
 		# Get column names 
-		MEGA_COLUMNS=( $(get_columns) )
+		MEGA_COLUMNS=( $(parse_schemata --of $__TABLE --columns) )
 		MEGA_RES="$1"
 
 		# ...

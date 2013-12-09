@@ -365,17 +365,11 @@ my_namespace() {
 				STMT=" ${STMT} BETWEEN $__BETWEEN"
 		}	
 		
-		# LIMIT  
-		[ ! -z "$__LIM" ] && {
-			[ -z "$STMT" ] && STMT="LIMIT $__LIM" || STMT=" ${STMT} LIMIT $__LIM"
-	
-			# Include any offset.
-			[ ! -z "$__OFFSET" ] && STMT=" ${STMT} OFFSET $__OFFSET"
-		}	
 	
 		# ... ORDER BY
 		[ ! -z "$__ORDER_BY" ] && {
-			[ -z "$STMT" ] && STMT="ORDER BY $__ORDER_BY" || STMT=" ${STMT} ORDER BY $__ORDER_BY"
+			# Include __ORDER_ORDER
+			[ -z "$STMT" ] && STMT="ORDER BY $__ORDER_BY ${__ORDER_AD:-"desc"}" || STMT=" ${STMT} ORDER BY $__ORDER_BY ${__ORDER_AD:-"desc"}"
 		}	
 	
 		# ... HAVING
@@ -388,9 +382,16 @@ my_namespace() {
 			[ -z "$STMT" ] && STMT="GROUP BY $__ORDER_BY" || STMT=" ${STMT} GROUP BY $__GROUP_BY"
 		}	
 	
+		# LIMIT  
+		[ ! -z "$__LIM" ] && {
+			[ -z "$STMT" ] && STMT="LIMIT $__LIM" || STMT=" ${STMT} LIMIT $__LIM"
+	
+			# Include any offset.
+			[ ! -z "$__OFFSET" ] && STMT=" ${STMT} OFFSET $__OFFSET"
+		}
+		
 		# Prepare the clause (begin with space, then WHERE, and end with ';')
 		[ -z "$STMT" ] && STMT=';' || STMT=" ${STMT};"
-	
 	
 		# Clause
 	}
@@ -600,93 +601,6 @@ my_namespace() {
 	
 	
 	#-----------------------------------------------------#
-	# get_columns()
-	#
-	# Get the columns of a table.
-	#-----------------------------------------------------#
-	get_columns() {
-		# Start fresh
-		unset __RESULTBUF__
-	
-		# Hold the schema results in the buffer.
-		__RESULTBUF__="$( $__SQLITE__ $DB ".schema ${__TABLE}")"
-	
-		# Die if nothing is there...
-		if [ -z "$__RESULTBUF__" ]
-		then
-			exit 1
-	
-		# If tables were written with newlines, use the below.
-		elif [ $(printf "%s" "$__RESULTBUF__" | wc -l) -gt 1 ]
-		then
-			# Process and reload the buffer.
-			# Could have an issue with `awk` on other systems.
-			__RESULTBUF__="$(printf '%s' "$__RESULTBUF__" | \
-				sed 's/\t//g' | \
-				sed 's/\r//g' | \
-				awk '{ print $1 }' | \
-				grep -v "CREATE" | \
-				sed 's/);//g' )"
-	
-			# Alterante return - no for...
-			printf "%s" "$__RESULTBUF__"
-	
-		# If tables were written with single line, use this...
-		else	
-			echo '...'
-			exit 1    # Can't handle this right now.
-	
-		fi
-	}
-	
-	
-	#-----------------------------------------------------#
-	# get_datatypes()
-	#
-	# Get the datatypes of a table.
-	#-----------------------------------------------------#
-	get_datatypes() {
-		# Start fresh
-		# unset __RESULTBUF__
-		for __COL__ in ${__DTBUF__[@]}
-		do
-			$__COL__
-		done
-	
-		# Hold the schema results in buffer.
-		__DTBUF__="$( $__SQLITE__ $DB ".schema ${__TABLE}")"
-	
-		# Die if nothing is there...
-		if [ -z "$__DTBUF__" ]
-		then
-			exit 1
-	
-		# If tables were written with newlines, use the below.
-		elif [ $(printf "%s" "$__DTBUF__" | wc -l) -gt 1 ]
-		then
-			# Process and reload the buffer.
-			# Could have an issue with `awk` on other systems.
-			__DTBUF__="$(printf '%s' "$__DTBUF__" | \
-				sed 's/\t//g' | \
-				sed 's/\r//g' | \
-				awk '{ print $2 }' | \
-				grep -v "TABLE" | \
-				sed 's/,//g' | \
-				sed 's/);//g' )"
-	
-			# Alterante return - no for...
-			printf "%s" "$__DTBUF__"
-	
-		# If tables were written with single line, use this...
-		else	
-			echo '...'
-			exit 1    # Can't handle this right now.
-	
-		fi
-	}
-	
-	
-	#-----------------------------------------------------#
 	# load_from_db_columns
 	#
 	# Create a variable in Bash out of each column header 
@@ -704,7 +618,7 @@ my_namespace() {
 	
 		else
 			# Get column names 
-			MEGA_COLUMNS=( $(get_columns) )
+			MEGA_COLUMNS=( $(parse_schemata --of $__TABLE --columns) )
 			MEGA_RES="$1"
 	
 			# ...
@@ -896,6 +810,127 @@ my_namespace() {
 	}
 	
 	
+	#-----------------------------------------------------#
+	# parse_schemata()
+	#
+	# Get the columns of a table.
+	#-----------------------------------------------------#
+	parse_schemata(){
+		# Saving this is possible, but a lot of work.
+		unset __RESULTBUF__
+	
+		# Options
+		while [ $# -gt 0 ]
+		do
+			case "$1" in
+				# Retrieve schemata in formatted order for quicker development.
+				-f|--formattted)
+					__RESULT_GET_FMT__=true
+				;;
+	
+				# Retrieve datatypes only.
+				-d|--datatypes)
+					__RESULT_GET_DT__=true
+				;;
+	
+				# Retrieve columns only.
+				-c|--columns)
+					__RESULT_GET_CS__=true
+				;;
+	
+				# Choose a table.
+				-o|--of)
+					shift
+					__RESULT_TBL__="$1"
+				;;
+			esac
+			shift
+		done
+	
+		# Buffer
+		__SCHBUF__="$( $__SQLITE__ $DB ".schema ${__RESULT_TBL__}")"
+	
+		# Die if no table was supplied.
+		[ -z "$__RESULT_TBL__" ] && {
+			printf "No table supplied to function: parse_schemata().\n" > /dev/stderr
+			# exit is not suitable here.
+			# http://www.linuxjournal.com/content/return-values-bash-functions	
+		}
+	
+		# Die if nothing is there...
+		if [ -z "$__SCHBUF__" ] 
+		then
+			printf "No schemata found within [ $DB ].\n" > /dev/stderr	
+	
+		# Only move forward if something exists.
+		elif [ $(printf "%s" "$__SCHBUF__" | wc -l) -gt 1 ]
+		then
+			# Could have an issue with `awk` on other systems.
+			# Just grab the column names.
+			__COLBUF__="$(printf '%s' "$__SCHBUF__" | \
+				sed 's/\t//g' | \
+				sed 's/\r//g' | \
+				awk '{ print $1 }' | \
+				grep -v "CREATE" | \
+				sed 's/);//g' )"
+	
+			# Get columns. 
+			[ ! -z $__RESULT_GET_CS__ ] && {
+				# Alterante return - no for...
+				printf "%s\n" "$__COLBUF__"
+			}
+	
+			# Get datatypes.
+			[ ! -z $__RESULT_GET_DT__ ] && {
+				# Get the datatypes
+				__DTBUF__="$(printf '%s' "$__SCHBUF__" | \
+					sed 's/\t//g' | \
+					sed 's/\r//g' | \
+					awk '{ print $2 }' | \
+					grep -v "TABLE" | \
+					sed 's/,//g' | \
+					sed 's/);//g' )"
+	
+				# Should check both __DTBUF__ and __COLBUF__ to make
+				# sure they've got the same number of elements.
+	
+				# Save both into arrays.
+				declare -a __DTARR__
+				declare -a __COLARR__
+				__DTARR__=( $( printf "%s " $__DTBUF__ ) )
+				__COLARR__=( $( printf "%s " $__COLBUF__ ) )
+				[ ${#__DTARR__[@]} -ne ${#__COLARR__[@]} ] && {
+					printf "Problem encountered when parsing datatypes or column names.\n" > /dev/stderr
+					# return?	
+				}
+	
+				# Return some giant block and parse from your client.
+				# printf "%s" "$__DTBUF__"
+	
+				for bbx in `seq 0 $(( ${#__DTARR__[@]} - 1 ))`
+				do
+					printf "%s\n" "${__COLARR__[$bbx]} = ${__DTARR__[$bbx]}"
+				done
+			}
+	
+		# Cannot support SQLite databases created with one line yet.
+		else	
+			printf "" > /dev/null
+		fi
+	
+		# Free
+		unset __DTARR__
+		unset __COLARR__
+		unset __DTBUF__
+		unset __COLBUF__
+	
+		unset __RESULT_GET_FMT__
+		unset __RESULT_GET_DT__
+		unset __RESULT_GET_CS__
+		unset __RESULT_TBL__
+	}
+	
+	
 	# Die if no arguments received.
 	if [ -z $DO_LIBRARIFY ]
 	then
@@ -946,6 +981,10 @@ my_namespace() {
 			--tables)
 				DO_SHOW_TABLES=true
 			;;
+			
+			--tables-and-columns)
+				DO_SHOW_TABLES_AND_COLUMNS=true
+			;;
 	
 			--of)
 				shift
@@ -994,6 +1033,12 @@ my_namespace() {
 				DO_SEND_QUERY=true
 				shift
 				__ORDER_BY="$1"
+				
+				# Is next argument a flag or an order modifier.
+				[ ! -z "$2" ] && [[ ! "$2" =~ "-" ]] && {
+					shift
+					__ORDER_AD="$1"	# ASC or DESCENDING
+				}
 			;;
 	
 			--group-by)
@@ -1133,21 +1178,23 @@ my_namespace() {
 	[ ! -z "$TABLE" ] && __TABLE="$TABLE"
 	
 	
+	
 	# get a column listing 
 	[ ! -z $DO_GET_COLUMNS ] && {
 		[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
 	
 		# Anywhere a __TABLE is present, check the first chars and make
 		# sure they're not flags.
-		get_columns
+		parse_schemata --of $__TABLE --columns	
 	}
 	
 	
 	# get a datatype listing 
-	if [ ! -z $DO_GET_COLUMN_TYPES ]
+	if [ ! -z $DO_GET_DATATYPES ]
 	then
 		[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
-		$__SQLITE__ $DB ".schema ${__TABLE}"
+		#$__SQLITE__ $DB ".schema ${__TABLE}"
+		parse_schemata --of $__TABLE --datatypes
 	fi
 	
 	
@@ -1155,8 +1202,15 @@ my_namespace() {
 	[ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
 	
 	
-	# Retrieve datatypes
-	[ ! -z $DO_GET_DATATYPES ] && get_datatypes
+	# Retrieve tables and columns...
+	[ ! -z $DO_SHOW_TABLES_AND_COLUMNS ] && {
+		for __XX__ in $($__SQLITE__ $DB '.tables')
+		do
+			printf "%s\n" $__XX__
+			printf "%s" $__XX__ | tr '[a-z]' '=' | sed 's/$/\n/'
+			parse_schemata --of $__XX__ --columns
+		done
+	}
 	# [ ADMIN ] END
 	# test 
 	[ ! -z $DO_VARDUMP ]	&& load_from_db_columns "$QUERY_ARG"
@@ -1203,7 +1257,7 @@ my_namespace() {
 			then
 				# I'm converting from variables to column names here.
 				__INSTR__=
-				for col_name in $(get_columns) 
+				for col_name in $(parse_schemata --of $__TABLE --columns) 
 				do
 					# Skip IDs, id,uid?
 					if [[ "$col_name" == "id" ]] || \
