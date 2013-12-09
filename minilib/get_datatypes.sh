@@ -12,7 +12,7 @@ get_datatypes() {
 	done
 
 	# Hold the schema results in buffer.
-	__DTBUF__="$( $SQLITE $DB ".schema ${__TABLE}")"
+	__DTBUF__="$( $__SQLITE__ $DB ".schema ${__TABLE}")"
 
 	# Die if nothing is there...
 	if [ -z "$__DTBUF__" ]

@@ -8,7 +8,7 @@ get_columns() {
 	unset __RESULTBUF__
 
 	# Hold the schema results in the buffer.
-	__RESULTBUF__="$( $SQLITE $DB ".schema ${__TABLE}")"
+	__RESULTBUF__="$( $__SQLITE__ $DB ".schema ${__TABLE}")"
 
 	# Die if nothing is there...
 	if [ -z "$__RESULTBUF__" ]

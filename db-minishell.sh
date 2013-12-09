@@ -48,14 +48,15 @@ usage() {
    echo "Usage: ./${PROGRAM}
 	[ - ]
 
-Read functions:
+ORM functions:
 -d | --database <arg>        Choose a database to work with. 
 -s | --select <arg>          Select <arg> columns from a table. 
      --select-all            Select all columns from a table. 
      --distinct <arg>        Select distinct rows from a table. 
      --limit <arg>           Limit result set.
      --offset <arg>          Use an offset when using the limit.
-     --having <arg>          Having ?
+     --group-by <arg>        Group results by <arg>
+     --having <arg>          When using --group-by, select only rows having <arg> 
      --order-by [asc|desc]   Order the rows.
 -b | --between <arg>         Use the BETWEEN clause.
                              (<arg> should follow the format: <col>=<min>-<max>)
@@ -66,6 +67,15 @@ Read functions:
 -z | --id <arg>              Retrieve only an id.
 -sa| --show-as <arg>         Choose a serialization type.
                              ( line, html, col are acceptable choices )
+-i | --insert <arg>          Commit records in <arg> to database. 
+-t | --into <arg>            Choose a table to insert into when using --insert.
+     --insert-from-mem       Craft and commit statement from variables within
+                             a script.
+-u | --update <arg>          If \$__TABLE not set, set this to choose a
+                             table to use in an UPDATE statement.
+-e | --set <arg>             Set <column> = <value>
+-r | --remove                Delete entry or entries depending on clause. 
+     --delete                SQL-compliant synonym for remove.
 
 
 Administrative Functions:
@@ -80,22 +90,7 @@ Administrative Functions:
      --vardump               List results as a variable dump.
 
 
-Update Functions:
--i | --insert <arg>          Commit records in <arg> to database. 
--t | --into <arg>            Choose a table to insert into when using --insert.
-     --insert-from-mem       Craft and commit statement from variables within
-                             a script.
--u | --update <arg>          If \$__TABLE not set, set this to choose a
-                             table to use in an UPDATE statement.
--e | --set <arg>             Set <column> = <value>
--r | --delete                Delete entry or entries depending on clause. 
--x | --remove-where <arg>    Delete entry or entries depending on <arg>.
-
-
 General Options:
-     --librarify             Create a library out of db-minishell for use
-                             within a shell script.
-     --libname <name>        Create the library with a name <name>.
      --install <dir>         Install to a location. <dir> must be absolute.
      --echo                  Echo back SQL statements for debugging.
 -v | --verbose               Be verbose in output.
@@ -158,8 +153,6 @@ do
 		# [ ADMIN ]
 		-c|--columns)
 			DO_GET_COLUMNS=true
-			shift
-			__TABLE="$1"
 		;;
 
 		-dt|--datatypes)

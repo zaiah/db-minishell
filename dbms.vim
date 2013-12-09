@@ -7,6 +7,7 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
  dbms.vim
  ms-build.sh
  ms-test.sh
+ ms-test-cli.sh
  lib=lib {
   __.sh
   break_list_by_delim.sh
@@ -29,10 +30,21 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
   load_from_db_columns.sh
   modify_from_db_columns.sh
  }
+ buildlib=buildlib {
+  no_conflict.sh
+  not_more_than_one.sh
+  parse_range.sh
+  pick_off.sh
+  random_word.sh
+ }
  tests=tests {
+  dbm-alt-namespace.sh
+  dbm-complete.sh
+  dbm-no-deps.sh
+  dbm-no-extraneous.sh
+  dbm-orm.sh
   instances_test_case.sh
-  kirk.db
-  orig.db
+  mytest.db
   test-db=test-db {
   }
  }
