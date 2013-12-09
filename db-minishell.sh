@@ -513,75 +513,17 @@ then
 	
 			# Debugger output if requested.
 			[ ! -z $ECHO_BACK ] && {
-				printf "%s" "$__SQLITE__ $DB "
-				printf "%s" "\"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+				printf "%s" "$__SQLITE__ $DB " > /dev/stderr
+				printf "%s" "\"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\"\n" > /dev/stderr
+				eval "echo \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\"" > /dev/stderr
 			}
 
-			eval "echo \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+			# Insert the records loaded.
 			eval "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
-			# Should probably be careful here.  
-			# Mostly just path stuff to worry about.
-#				eval "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 
 		# Allow the ability to craft a more standard INSERT own.
 		else
-			# We break only by a comma, but we need to make 
-			# sure that said comma isn't within a text string. 
-#			unset __CHAR__
-#			__CHARCOUNT__=0
-#			declare -a __CHARPOS__
-#			__CHARPOS__[0]=0
-#				
-#			# Debug
-#			echo Length of \$WRITE: ${#WRITE}
-#
-#			# Move through the entire string.
-#			for __CHAR__ in `seq 0 "${#WRITE}"`
-#			do
-#				# Extract one character at a time.
-#				# I'm thinking I need a string find library.
-#				CHAR_1=${WRITE:$__CHARCOUNT__:1}
-#				CHAR_C=${#__CHARPOS__[@]}
-#
-#				# Get that character. 
-#				if [[ $CHAR_1 == "'" ]] || [[ $CHAR_1 == '"' ]] 
-#				then
-#					echo Quote found: $CHAR_1
-#					__CHARCOUNT__=$(( $__CHARCOUNT__ + 1 ))
-#					
-#					# Skip until we reach the end of the text delimiter.
-#					__STRENC__="$CHAR_1"
-#					while [[ ! ${WRITE:$__CHARCOUNT__:1} == $__STRENC__ ]]
-#					do
-#						__CHARCOUNT__=$(( $__CHARCOUNT__ + 1 ))
-#					done
-#			
-#					# Do yet another increment.
-#					# unset __STRENC__
-#				fi
-#
-#				# Save the comma.	
-#				if [[ $CHAR_1 == ',' ]] 
-#				then 
-#					echo $CHAR_C 
-#					__CHARPOS__[$CHAR_C]=$__CHARCOUNT__ 
-#					echo $__CHARCOUNT__
-#				fi
-#				__CHARCOUNT__=$(( $__CHARCOUNT__ + 1 ))
-#			done
-
-			# Debug
-			# echo At pos: ${WRITE:35:1}
-			# echo ${#__CHARPOS__}
-
-			# Gonna need some pretty serious recursion.
-			# Check string first for "'" or '"'
-			#		If found, then check for the next one, and after a match find the next ','
-			# Check string for ","
-			# Writing this recursively would involve knowing where the string is...
-
-			# Just taking a command line dump here.
-			echo $__SQLITE__ $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )"
+			typical_insert	
 		fi
 	fi
 

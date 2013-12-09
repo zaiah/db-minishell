@@ -94,6 +94,7 @@ tmp_file() {
 			-d|--delete-last-created)
 				OPT_TMP_DELETE_LAST=true
 			;;
+
 		esac
 		shift
 	done
@@ -202,6 +203,7 @@ usage() {
 -r | --remove                 Test removals.
 -e | --modify                 Modify some records.
 -s | --select                 Selects all records.
+-v | --verbose                Be verbose in output.
 -h | --help                   Show this help and quit.
 "
    exit $STATUS
@@ -246,6 +248,10 @@ do
        	# Run all tests.
 			DO_ENTIRE=true 
       ;;
+		# Be verbose.
+		-v|--verbose) 
+			VERBOSE=true
+		;;
      -h|--help)
         usage 0
       ;;
@@ -269,7 +275,7 @@ then
 	# Create a SQL load statement.
 	#	 id integer primary key autoincrement,
 	echo "CREATE TABLE $TABLE (
-		 id integer,
+		 id integer primary key autoincrement,
 		 instance_name text,
 		 srv_path text,
 		 dev_path text,
@@ -359,6 +365,11 @@ then
 
 	# Load each record.
 	$SQLITE $DB < $RECORD_IMPORT
+
+	# Give me something if I asked.
+	[ ! -z $VERBOSE ] && {
+		printf "$FILL_THIS_MANY records inserted into $DB"
+	}
 fi
 
 

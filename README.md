@@ -59,3 +59,10 @@ General Options:
 
 # To do / Good Ideas
 Move this to a transaction based system for speed.  Only one invocation needed and close the program when totally done.
+
+What if I want to do mass updates?  Besides looped invocation (slow as hell) how can I generate a GIANT statement.
+
+--set / --use 
+	Set by sending variables to temporary file and loading. 
+	or using eval to load to memory, this way may mean I'll have to be careful about globals again...
+	temporary file (or eval with some crazy no way in hell this would ever exist varname) can do some stuff...
