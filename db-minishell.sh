@@ -523,7 +523,17 @@ then
 
 		# Allow the ability to craft a more standard INSERT own.
 		else
-			typical_insert	
+		#		typical_insert	
+			# Find each of the markers.
+			WRITE=$(chop --this "$WRITE" --delimiter '|' | sed 's/|/,/g')
+
+			# Echo back if asked.
+			[ ! -z $ECHO_BACK ] && {
+				printf "%s\n" "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $(printf "%s" "$WRITE" | sed 's/|/,/g' ) )\"" > /dev/stderr
+			}
+
+			# Insert a new row.
+			$__SQLITE__ $DB "INSERT INTO ${__TABLE} VALUES ( $WRITE )" > /dev/stderr
 		fi
 	fi
 
