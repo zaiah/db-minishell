@@ -217,6 +217,12 @@ do
 			DO_SEND_QUERY=true
 			shift
 			__ORDER_BY="$1"
+			
+			# Is next argument a flag or an order modifier.
+			[ ! -z "$2" ] && [[ ! "$2" =~ "-" ]] && {
+				shift
+				__ORDER_AD="$1"	# ASC or DESCENDING
+			}
 		;;
 
 		--group-by)
@@ -380,8 +386,8 @@ done
 # Set table properly.
 [ ! -z "$TABLE" ] && __TABLE="$TABLE"
 
-parse_schemata --of $__TABLE --columns
-exit
+#parse_schemata --of $__TABLE --columns
+#exit
 
 
 # [ SYSTEM ]
@@ -415,9 +421,11 @@ fi
 [ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
 
 # Retrieve tables and columns...
-[ ! -z $DO_SHOW_TABLES ] && {
+[ ! -z $DO_SHOW_TABLES_AND_COLUMNS ] && {
 	for __XX__ in $($__SQLITE__ $DB '.tables')
 	do
+		printf "%s\n" $__XX__
+		printf "%s" $__XX__ | sed 's/[a-z].*/=/' 
 	done
 }
 

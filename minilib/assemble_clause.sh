@@ -118,17 +118,11 @@ assemble_clause() {
 			STMT=" ${STMT} BETWEEN $__BETWEEN"
 	}	
 	
-	# LIMIT  
-	[ ! -z "$__LIM" ] && {
-		[ -z "$STMT" ] && STMT="LIMIT $__LIM" || STMT=" ${STMT} LIMIT $__LIM"
-
-		# Include any offset.
-		[ ! -z "$__OFFSET" ] && STMT=" ${STMT} OFFSET $__OFFSET"
-	}	
 
 	# ... ORDER BY
 	[ ! -z "$__ORDER_BY" ] && {
-		[ -z "$STMT" ] && STMT="ORDER BY $__ORDER_BY" || STMT=" ${STMT} ORDER BY $__ORDER_BY"
+		# Include __ORDER_ORDER
+		[ -z "$STMT" ] && STMT="ORDER BY $__ORDER_BY ${__ORDER_AD:-"desc"}" || STMT=" ${STMT} ORDER BY $__ORDER_BY ${__ORDER_AD:-"desc"}"
 	}	
 
 	# ... HAVING
@@ -141,9 +135,16 @@ assemble_clause() {
 		[ -z "$STMT" ] && STMT="GROUP BY $__ORDER_BY" || STMT=" ${STMT} GROUP BY $__GROUP_BY"
 	}	
 
+	# LIMIT  
+	[ ! -z "$__LIM" ] && {
+		[ -z "$STMT" ] && STMT="LIMIT $__LIM" || STMT=" ${STMT} LIMIT $__LIM"
+
+		# Include any offset.
+		[ ! -z "$__OFFSET" ] && STMT=" ${STMT} OFFSET $__OFFSET"
+	}
+	
 	# Prepare the clause (begin with space, then WHERE, and end with ';')
 	[ -z "$STMT" ] && STMT=';' || STMT=" ${STMT};"
-
 
 	# Clause
 }
