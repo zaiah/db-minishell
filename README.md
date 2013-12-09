@@ -55,3 +55,7 @@ General Options:
      librarify            
      libname <name>       
      install <dir>        
+
+
+# To do / Good Ideas
+Move this to a transaction based system for speed.  Only one invocation needed and close the program when totally done.

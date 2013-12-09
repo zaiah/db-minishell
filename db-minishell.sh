@@ -386,9 +386,6 @@ done
 # Set table properly.
 [ ! -z "$TABLE" ] && __TABLE="$TABLE"
 
-#parse_schemata --of $__TABLE --columns
-#exit
-
 
 # [ SYSTEM ]
 # Install
@@ -405,33 +402,32 @@ done
 
 	# Anywhere a __TABLE is present, check the first chars and make
 	# sure they're not flags.
-	get_columns
+	parse_schemata --of $__TABLE --columns	
 }
 
 
 # get a datatype listing 
-if [ ! -z $DO_GET_COLUMN_TYPES ]
+if [ ! -z $DO_GET_DATATYPES ]
 then
 	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
-	$__SQLITE__ $DB ".schema ${__TABLE}"
+	#$__SQLITE__ $DB ".schema ${__TABLE}"
+	parse_schemata --of $__TABLE --datatypes
 fi
 
 
 # Retrieve tables. 
 [ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
 
+
 # Retrieve tables and columns...
 [ ! -z $DO_SHOW_TABLES_AND_COLUMNS ] && {
 	for __XX__ in $($__SQLITE__ $DB '.tables')
 	do
 		printf "%s\n" $__XX__
-		printf "%s" $__XX__ | sed 's/[a-z].*/=/' 
+		printf "%s" $__XX__ | tr '[a-z]' '=' | sed 's/$/\n/'
+		parse_schemata --of $__XX__ --columns
 	done
 }
-
-
-# Retrieve datatypes
-[ ! -z $DO_GET_DATATYPES ] && get_datatypes
 # [ ADMIN ] END
 
 # [ EXTENSIONS ]

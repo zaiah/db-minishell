@@ -65,7 +65,7 @@ parse_schemata(){
 		# Get columns. 
 		[ ! -z $__RESULT_GET_CS__ ] && {
 			# Alterante return - no for...
-			printf "%s" "$__COLBUF__"
+			printf "%s\n" "$__COLBUF__"
 		}
 
 		# Get datatypes.
@@ -83,13 +83,37 @@ parse_schemata(){
 			# sure they've got the same number of elements.
 
 			# Save both into arrays.
+			declare -a __DTARR__
+			declare -a __COLARR__
+			__DTARR__=( $( printf "%s " $__DTBUF__ ) )
+			__COLARR__=( $( printf "%s " $__COLBUF__ ) )
+			[ ${#__DTARR__[@]} -ne ${#__COLARR__[@]} ] && {
+				printf "Problem encountered when parsing datatypes or column names.\n" > /dev/stderr
+				# return?	
+			}
 
 			# Return some giant block and parse from your client.
-			printf "%s" "$__DTBUF__"
+			# printf "%s" "$__DTBUF__"
+
+			for bbx in `seq 0 $(( ${#__DTARR__[@]} - 1 ))`
+			do
+				printf "%s\n" "${__COLARR__[$bbx]} = ${__DTARR__[$bbx]}"
+			done
 		}
 
 	# Cannot support SQLite databases created with one line yet.
 	else	
 		printf "" > /dev/null
 	fi
+
+	# Free
+	unset __DTARR__
+	unset __COLARR__
+	unset __DTBUF__
+	unset __COLBUF__
+
+	unset __RESULT_GET_FMT__
+	unset __RESULT_GET_DT__
+	unset __RESULT_GET_CS__
+	unset __RESULT_TBL__
 }
