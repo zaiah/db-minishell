@@ -269,6 +269,7 @@ then
 	# Create a SQL load statement.
 	#	 id integer primary key autoincrement,
 	echo "CREATE TABLE $TABLE (
+		 id integer,
 		 instance_name text,
 		 srv_path text,
 		 dev_path text,
@@ -336,7 +337,8 @@ then
 		LAST_VERSION="1.01"					# make up stuff
 		USER_OWNER="zaiah"					# Grep one word from $WORDS 
 		DESCRIPTION='Button up, bro.'		# Grep arbitrary number of words from $WORDS
-		
+	
+		printf "$EACH|"
 		printf "$INSTANCE|"
 		printf "$SRV_PATH|"
 		printf "$DEV_PATH|"

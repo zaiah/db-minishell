@@ -97,6 +97,7 @@ General Options:
                              within a shell script.
      --libname <name>        Create the library with a name <name>.
      --install <dir>         Install to a location. <dir> must be absolute.
+     --echo                  Echo back SQL statements for debugging.
 -v | --verbose               Be verbose in output.
 -h | --help                  Show this help and quit.
 "
@@ -109,7 +110,7 @@ General Options:
 #-----------------------------------------------------#
 
 # Executables
-#__SQLITE__="$(which sqlite3 2>/dev/null)"
+__SQLITE__="$(which sqlite3 2>/dev/null)"
 
 # [ LOCAL ] 
 # Die if no arguments received.
@@ -187,6 +188,43 @@ do
 			DO_SEND_QUERY=true
 			DO_SELECT=true
 			SELECT="*"
+		;;
+
+		--distinct)
+			DO_SEND_QUERY=true
+			DO_DISTINCT=true
+			DO_SELECT=true
+			shift
+			SELECT="$1"
+		;;
+
+		--limit)
+			DO_SEND_QUERY=true
+			shift
+			__LIM="$1"
+		;;
+		--having)
+			DO_SEND_QUERY=true
+			shift
+			__HAVING="$1"
+		;;
+
+		--offset)
+			DO_SEND_QUERY=true
+			shift
+			__OFFSET="$1"
+		;;
+
+		--order-by)
+			DO_SEND_QUERY=true
+			shift
+			__ORDER_BY="$1"
+		;;
+
+		--group-by)
+			DO_SEND_QUERY=true
+			shift
+			__GROUP_BY="$1"
 		;;
 
 		-f|--from)
@@ -313,6 +351,10 @@ do
 			 INSTALL_DIR=$1
 		 ;;
 
+	 	--echo)
+			 ECHO_BACK=true
+	 	 ;;
+
 	 	-v|--verbose)
 			 VERBOSE=true
 	 	 ;;
@@ -388,11 +430,19 @@ then
 	then
 		if [ -z $DO_LIBRARIFY ] 
 		then
-			[ ! -z $DO_SELECT ] && [ -z "$SELECT" ] && NO_STMT_SPECIFIED="SELECT" 
-			[ ! -z $DO_REMOVE ] && [ -z "$CLAUSE" ] && NO_STMT_SPECIFIED="DELETE FROM" 
-			[ ! -z $DO_ID ] && [ -z "$CLAUSE" ] && NO_STMT_SPECIFIED="SELECT" 
+			[ ! -z $DO_SELECT ] && [ -z "$SELECT" ] && {
+				NO_STMT_SPECIFIED="SELECT" 
+			}
+			[ ! -z $DO_REMOVE ] && [ -z "$CLAUSE" ] && {
+				NO_STMT_SPECIFIED="DELETE FROM" 
+			}
+			[ ! -z $DO_ID ] && [ -z "$CLAUSE" ] && {
+				NO_STMT_SPECIFIED="SELECT" 
+			}
 			[ ! -z $DO_WRITE ] && NO_STMT_SPECIFIED="INSERT INTO" 
-			[ ! -z $DO_UPDATE ] && [ -z "$SET" ] && NO_STMT_SPECIFIED="UPDATE" 
+			[ ! -z $DO_UPDATE ] && [ -z "$SET" ] && {
+				NO_STMT_SPECIFIED="UPDATE" 
+			}
 			printf "Either no database, no table or no columns specified in the ${NO_STMT_SPECIFIED} statement.\n"
 			$__EXIT__ 1
 		else
@@ -446,8 +496,13 @@ then
 				# Append to an INSERT string.
 				__INSTR__="$__INSTR__, $__VARVAL__" 
 			done
-		
-			echo "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+	
+			# Debugger output if requested.
+			[ ! -z $ECHO_BACK ] && {
+				printf "%s" "$__SQLITE__ $DB "
+				printf "%s" "\"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
+			}
+
 			eval "echo \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 			eval "$__SQLITE__ $DB \"INSERT INTO ${__TABLE} VALUES ( $__INSTR__ )\""
 			# Should probably be careful here.  
@@ -517,7 +572,13 @@ then
 	fi
 
 	# By this point, this program needs to check for and craft a clause.
-	[ ! -z "$CLAUSE" ] || [ ! -z "$__BETWEEN" ] && assemble_clause
+	[ ! -z "$CLAUSE" ] || \
+		[ ! -z "$__BETWEEN" ] || \
+		[ ! -z "$__LIM" ] || \
+		[ ! -z "$__HAVING" ] || \
+		[ ! -z "$__OFFSET" ] || \
+		[ ! -z "$__ORDER_BY" ] || \
+		[ ! -z "$__GROUP_BY" ] && assemble_clause
 
 	# select
 	[ ! -z $DO_SELECT ] && {
@@ -531,13 +592,27 @@ then
 			esac
 		}
 
+		# Any modifiers? 
+		[ ! -z $DO_DISTINCT ] && SELECT_DISTINCT="SELECT DISTINCT"
+
+		# Debugging output.
+		[ ! -z $ECHO_BACK ] && {
+			printf "%s" "$__SQLITE__ $DB $SR_TYPE" 
+			printf "%s" "'${SELECT_DISTINCT:-SELECT} $SELECT FROM ${__TABLE}${STMT}'"
+			printf "\n"
+		}
+
 		# Select all the records asked for.
-		$__SQLITE__ $DB $SR_TYPE "SELECT $SELECT FROM ${__TABLE}${STMT}"
+		$__SQLITE__ $DB \
+			$SR_TYPE \
+			"${SELECT_DISTINCT:-SELECT} $SELECT FROM ${__TABLE}${STMT}"
 	}	
 
 	# select only id
 	# Select all the records asked for.
-	[ ! -z $DO_ID ] && $__SQLITE__ $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
+	[ ! -z $DO_ID ] && {
+		$__SQLITE__ $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
+	}
 	
 	# update
 	[ ! -z $DO_UPDATE ] && {

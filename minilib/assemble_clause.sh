@@ -111,37 +111,35 @@ assemble_clause() {
 	# Test for empty string, (but how?)
 
 	# BETWEEN 
-	if [ ! -z $__BETWEEN ] 
-	then
+	[ ! -z $__BETWEEN ] && {
 		BETWEEN_COL=${__BETWEEN%%=*}
 		BETWEEN_VAL=${__BETWEEN##*=}
 		[ -z "$STMT" ] && STMT="WHERE $BETWEEN_COL BETWEEN ${BETWEEN_VAL%%-*} AND ${BETWEEN_VAL##*-}" || \
 			STMT=" ${STMT} BETWEEN $__BETWEEN"
-	fi
-
+	}	
+	
 	# LIMIT  
-	if [ ! -z $__LIM ] 
-	then
+	[ ! -z "$__LIM" ] && {
 		[ -z "$STMT" ] && STMT="LIMIT $__LIM" || STMT=" ${STMT} LIMIT $__LIM"
-	fi
+
+		# Include any offset.
+		[ ! -z "$__OFFSET" ] && STMT=" ${STMT} OFFSET $__OFFSET"
+	}	
 
 	# ... ORDER BY
-	if [ ! -z $__ORDER_BY ]
-	then
+	[ ! -z "$__ORDER_BY" ] && {
 		[ -z "$STMT" ] && STMT="ORDER BY $__ORDER_BY" || STMT=" ${STMT} ORDER BY $__ORDER_BY"
-	fi
+	}	
 
 	# ... HAVING
-	if [ ! -z $__HAVING ]
-	then
+	[ ! -z "$__HAVING" ] && {
 		[ -z "$STMT" ] && STMT="HAVING $__ORDER_BY" || STMT=" ${STMT} HAVING $__ORDER_BY"
-	fi
+	}	
 
 	# ... GROUP BY
-	if [ ! -z $__GROUP_BY ]
-	then
-		[ -z "$STMT" ] && STMT="GROUP BY $__ORDER_BY" || STMT=" ${STMT} GROUP BY $__ORDER_BY"
-	fi
+	[ ! -z "$__GROUP_BY" ] && {
+		[ -z "$STMT" ] && STMT="GROUP BY $__ORDER_BY" || STMT=" ${STMT} GROUP BY $__GROUP_BY"
+	}	
 
 	# Prepare the clause (begin with space, then WHERE, and end with ';')
 	[ -z "$STMT" ] && STMT=';' || STMT=" ${STMT};"
