@@ -39,6 +39,7 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
   random_word.sh
  }
  tests=tests {
+  d.db
   dbm-alt-namespace.sh
   dbm-complete.sh
   dbm-no-deps.sh
