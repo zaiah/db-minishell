@@ -478,7 +478,7 @@ then
 		then
 			# I'm converting from variables to column names here.
 			__INSTR__=
-			for col_name in $(get_columns) 
+			for col_name in $(parse_schemata --of $__TABLE --columns) 
 			do
 				# Skip IDs, id,uid?
 				if [[ "$col_name" == "id" ]] || \
