@@ -563,9 +563,11 @@ then
 
 		# Debugging output.
 		[ ! -z $ECHO_BACK ] && {
-			printf "%s" "$__SQLITE__ $DB $SR_TYPE" 
-			printf "%s" "'${SELECT_DISTINCT:-SELECT} $SELECT FROM ${__TABLE}${STMT}'"
-			printf "\n"
+			(
+				printf "%s" "$__SQLITE__ $DB $SR_TYPE" 
+				printf "%s" "'${SELECT_DISTINCT:-SELECT} $SELECT FROM ${__TABLE}${STMT}'"
+				printf "\n"
+			) > /dev/stderr
 		}
 
 		# Select all the records asked for.
@@ -577,6 +579,9 @@ then
 	# select only id
 	# Select all the records asked for.
 	[ ! -z $DO_ID ] && {
+		[ ! -z $ECHO_BACK ] && {
+			printf "%s" $__SQLITE__ $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}" > /dev/stderr
+		}
 		$__SQLITE__ $DB "SELECT ${ID_IDENTIFIER:-id} FROM ${__TABLE}${STMT}"
 	}
 	
@@ -584,6 +589,12 @@ then
 	[ ! -z $DO_UPDATE ] && {
 		# Compound your SET statements, same rules apply as in regular statment
 		assemble_set
+		[ ! -z $ECHO_BACK ] && {
+			(
+				printf "%s" $__SQLITE__ $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
+				printf "\n"
+			) > /dev/stderr
+		}
 		$__SQLITE__ $DB "UPDATE ${__TABLE} SET ${ST_TM}${STMT}"
 	}	
 
