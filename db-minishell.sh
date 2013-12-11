@@ -134,8 +134,6 @@ else
 fi
 
 # Arrays
-declare -a WHERE_CLAUSE 
-declare -a NOT_CLAUSE 
 declare -a OR_X_AND			# Is it an OR or AND clause?
 # [ LOCAL ] END
 
@@ -266,6 +264,8 @@ do
 		;;
 
 		-e|--set)
+			DO_SEND_QUERY=true
+			DO_UPDATE=true
 			shift
 			if [[ "$1" =~ "|" ]]
 			then
