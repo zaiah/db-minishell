@@ -171,7 +171,11 @@ do
 
 	 	--echo)
 			 ECHO_BACK=true
-	 	 ;;
+	 	;;
+
+		--transfer)
+			DO_TRANSFER=true
+		;;
 
 		# [ ADMIN ] END
 
@@ -406,13 +410,67 @@ done
 
 
 # get a datatype listing 
-if [ ! -z $DO_GET_DATATYPES ]
-then
+[ ! -z $DO_GET_DATATYPES ] && {
 	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
 	#$__SQLITE__ $DB ".schema ${__TABLE}"
 	parse_schemata --of $__TABLE --datatypes
-fi
+}
 
+
+# Perform a table transfer.
+[ ! -z $DO_TRANSFER ] && {
+	# Get headers from the table to be transferred.
+
+	# This next step is tricky...
+	# Check for --dropping or --adding statements.
+	# Also need an agnostic way to get the stuff transferred.
+	# ( Generate an SQL table? )
+	# ( Add columns and datatypes on the command line? )
+
+	# Create a temporary table 
+
+	# Craft the SELECT statement to get records out of the the table to transfer from.
+	
+	# Load your temporary table.
+		
+	# Create the new table (with or without whatever columns are needed)
+
+	# (The temporary table should drop at the end of the transaction)
+
+	# Drop the original table.
+
+
+
+	# Create the new table first.
+	printf "CREATE TABLE $TABLE (" > $CONV
+	printf "\n${HEADER%%,} );" >> $CONV
+	printf "\n.separator ${SEPCHAR}" >> $CONV
+	printf "\n.import $FSV $TABLE" >> $CONV
+
+	# Populate (only if we need strict data types or have a dataset we'd like to move into production.)
+	# This assumes we've already created the table.
+		# Check that the table exists.
+		EXISTS=$(sqlite3 $DB '.schema' | grep "CREATE TABLE $TABLE")
+		if [ -z "$EXISTS" ]
+		then
+			printf "Uh oh!\nTable [$TABLE] was not found in the database [$DB].\nExiting...\n" >&2
+			exit 1
+		fi
+	
+		# Create a temporary table and reindex properly.
+		NO_TYPE_HEADER=$(echo $SRC | sed "s/${SEPCHAR}/, /g" | sed "s/\r//")
+		TMP_TABLE="tmp_$TABLENAME"
+
+		# Generate the file.
+		printf "CREATE TEMP TABLE $TMP_TABLE (" > $CONV
+		printf "\n${HEADER%%,} );" >> $CONV
+		printf "\n.separator ${SEPCHAR}" >> $CONV
+		printf "\n.import $FSV $TMP_TABLE" >> $CONV
+
+		# Populate if we've already made one.
+		printf "\nINSERT INTO $TABLE ( ${NO_TYPE_HEADER} ) SELECT * FROM $TMP_TABLE;" >> $CONV
+		printf "\n.quit" >> $CONV
+}
 
 # Retrieve tables. 
 [ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
@@ -642,6 +700,7 @@ unset DO_GET_COLUMNS
 unset DO_GET_DATATYPES
 unset DO_ID
 unset DO_INSTALL
+unset DO_TRANSFER
 unset DO_REMOVE
 unset DO_SHOW_TABLES_AND_COLUMNS
 unset DO_SHOW_TABLES
