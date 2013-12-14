@@ -4,7 +4,7 @@
 #
 # Return true or false if an element is found in an array.
 #-----------------------------------------------------#
-is_this_in () {
+is_element_present_in() {
 	# Catch arguments.
 	if [ -z "$1" ] || [ -z "$2" ]
 	then

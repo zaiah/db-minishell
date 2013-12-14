@@ -40,7 +40,9 @@ parse_schemata(){
 
 	# Die if no table was supplied.
 	[ -z "$__RESULT_TBL__" ] && {
-		printf "No table supplied to function: parse_schemata().\n" > /dev/stderr
+		(
+			printf "No table supplied to function: parse_schemata().\n" 
+		) > /dev/stderr
 		# exit is not suitable here.
 		# http://www.linuxjournal.com/content/return-values-bash-functions	
 	}
@@ -51,8 +53,29 @@ parse_schemata(){
 		printf "No schemata found within [ $DB ].\n" > /dev/stderr	
 
 	# Only move forward if something exists.
-	elif [ $(printf "%s" "$__SCHBUF__" | wc -l) -gt 1 ]
-	then
+
+	# 
+	# Currently does not account for errantly created SQLite databases.
+	# E.g. stuff like:
+	# id integer primary autoincrement,
+	# jamon text,
+	# beatrice text lawdy text <-- where this is obviously wrong...
+	#
+	else
+		# Check
+		__SCHBUF__=$(printf "%s\n" "$__SCHBUF__" | \
+			# No tabs
+			sed 's/\t//g' | \
+			# No commas (single line breakdown is still difficult...)
+			sed 's/,/\n/g' | \
+			# No single blank lines.
+			sed '/^$/d')
+
+		# Some debugging for that azz...
+		# printf "$__SCHBUF__"
+		# printf "\n"
+		# exit
+
 		# Could have an issue with `awk` on other systems.
 		# Just grab the column names.
 		__COLBUF__="$(printf '%s' "$__SCHBUF__" | \
@@ -62,6 +85,8 @@ parse_schemata(){
 			grep -v "CREATE" | \
 			sed 's/);//g' )"
 
+		# Perhaps external key checks need to be done here?
+
 		# Get columns. 
 		[ ! -z $__RESULT_GET_CS__ ] && {
 			# Alterante return - no for...
@@ -69,6 +94,7 @@ parse_schemata(){
 		}
 
 		# Get datatypes.
+		# Should check for foreign keys, contstraints and primary keys.
 		[ ! -z $__RESULT_GET_DT__ ] && {
 			# Get the datatypes
 			__DTBUF__="$(printf '%s' "$__SCHBUF__" | \
@@ -77,7 +103,8 @@ parse_schemata(){
 				awk '{ print $2 }' | \
 				grep -v "TABLE" | \
 				sed 's/,//g' | \
-				sed 's/);//g' )"
+				sed 's/);//g' | \
+				tr '[a-z]' '[A-Z]')"
 
 			# Should check both __DTBUF__ and __COLBUF__ to make
 			# sure they've got the same number of elements.
@@ -88,7 +115,10 @@ parse_schemata(){
 			__DTARR__=( $( printf "%s " $__DTBUF__ ) )
 			__COLARR__=( $( printf "%s " $__COLBUF__ ) )
 			[ ${#__DTARR__[@]} -ne ${#__COLARR__[@]} ] && {
-				printf "Problem encountered when parsing datatypes or column names.\n" > /dev/stderr
+				(
+					printf "Problem encountered when parsing datatypes "
+					printf "or column names.\n" 
+				) > /dev/stderr
 				# return?	
 			}
 
@@ -100,10 +130,6 @@ parse_schemata(){
 				printf "%s\n" "${__COLARR__[$bbx]} = ${__DTARR__[$bbx]}"
 			done
 		}
-
-	# Cannot support SQLite databases created with one line yet.
-	else	
-		printf "" > /dev/null
 	fi
 
 	# Free

@@ -3,6 +3,7 @@ __BULIBSRC__="$(dirname $(readlink -f $0))/lib"
 
 # Hold library names and checksums.
 BASHUTIL_LIBS=(
+	"arrayify.sh" # None
 	"break_list_by_delim.sh" # 059619afaf95f737eb844ce92e470ce5
 	"break_maps_by_delim.sh" # a4ddc2e9ba4a81dec71d2397fed440fd
 	"is_element_present_in.sh" # 4a85d469af74c76c14f199c287ee989e

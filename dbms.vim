@@ -22,16 +22,22 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
   assemble_set.sh
   break_list_by_delim.sh
   break_maps_by_delim.sh
+  chop_by_char.sh
   chop_by_position.sh
+  contains.sh
   convert.sh
-  get_columns.sh
-  get_datatypes.sh
-  get_schemata.sh
   load_from_db_columns.sh
   modify_from_db_columns.sh
   parse_schemata.sh
  }
  buildlib=buildlib {
+  _libupdate_.sh
+  arrtest.sh
+  arr.sh
+  col_wrap.sh
+  help.sh
+  in_arr.sh
+  is.sh
   no_conflict.sh
   not_more_than_one.sh
   parse_range.sh
