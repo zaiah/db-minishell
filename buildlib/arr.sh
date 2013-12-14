@@ -36,7 +36,7 @@ arr() {
 	         shift
 	         PUSH="$1"
 	      ;;
-	     -p|--pop)
+	     -x|--pop)
 	         DO_POP=true
 	         shift
 	         POP="$1"
@@ -87,13 +87,25 @@ arr() {
 
 	# Die on lack of array.
 	[ ! -z "$__ARRY__" ] && {
+		echo "eval 'echo \"\${'$__ARRY__'[@]}\"') )"
 		__ARY__=( $(eval 'echo "${'$__ARRY__'[@]}"') )
+		echo ${__ARY__[@]}
+		eval 'echo "${'$__ARRY__'[@]}"'
+#		echo ${__ARRY__}
+#		__ARY__=( $(eval "echo \"${${!__ARRY__}[@]}\"") )
+
+
 	} || printf "No array supplied to arr().\n" > /dev/stderr
 
 	# This can handle multiple arguments.  Maybe...
 	# Bash arrays can be sparse, so...this is hard to deal with...
 	[ ! -z $DO_PUSH ] && {
+	echo 'blig'
+		#echo $PUSH
 		__ARY__[${#__ARY__[@]}]="$PUSH"
+		echo ${#__ARY__[@]}
+
+		eval $__ARRY__'="'${__ARY__[@]}'"'
 	   printf '' > /dev/null
 	}
 	
@@ -102,10 +114,10 @@ arr() {
 	}
 	
 	[ ! -z $DO_REVEAL ] && {
-		ti '${__ARRY__} (arrname)' "${__ARRY__}"
-		ti '${__ARY__}' "${__ARY__}"
-		ti '${__ARY__[@]}' "${__ARY__[@]}"
-		ti '${#__ARY__[@]}' "${#__ARY__[@]}"
+#		ti '${__ARRY__} (arrname)' "${__ARRY__}"
+#		ti '${__ARY__}' "${__ARY__}"
+#		ti '${__ARY__[@]}' "${__ARY__[@]}"
+#		ti '${#__ARY__[@]}' "${#__ARY__[@]}"
 		echo ${#__ARY__[@]}
 	   printf '' > /dev/null
 	}
@@ -125,6 +137,7 @@ arr() {
 
 	# Do all unsets...
 	# __ARY__ is now the active array...
+	unset __ARY__
 	unset __ARRY__  # What happens when we start working with MANY arrays...
 	unset DO_PUSH
 	unset DO_POP

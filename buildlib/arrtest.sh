@@ -65,35 +65,43 @@ function ti() {
 	echo "# Show the array"
 	op "echo ${JOLLY_BEANS[@]}"
 	echo ${JOLLY_BEANS[@]}
+
+	# Non manual
+#	echo "# Show the array (via arr.sh)"
+#	op "arr --reveal --within JOLLY_BEANS"
+#	arr --reveal --within JOLLY_BEANS
 }
 
 
 [ ! -z $PP ] && {
-	# Non manual
-	echo "# Show the array (via arr.sh)"
-	op "arr --reveal --within JOLLY_BEANS"
-	arr --reveal --within JOLLY_BEANS
-
 	# That basic stuff seems to work.
 	# Let's do it all again...
 	declare -a SUPER_DETH
-	echo "Make a new array called SUPER_DETH"
-	op "arr --elements --within SUPER_DETH"
-	arr --elements --within SUPER_DETH 
+#	echo "Make a new array called SUPER_DETH"
+#	op "arr --elements --within SUPER_DETH"
+#	SUPER_DETH[0]="ONE"
+#	SUPER_DETH[1]="ONE"
+	echo "Now global: $__ARY__"
+	arr --push "ONE" --to "SUPER_DETH"
+	arr --push "TWO" --to "SUPER_DETH"
+	echo "Now global: ${__ARY__[@]}"
+#	arr --elements --within SUPER_DETH 
+	arr --reveal --within SUPER_DETH 
+#	arr --reveal --within SUPER_DETH 
+#	echo "'${SUPER_DETH[@]}'"
 
+exit
 	# Push some stuff to it.
-	echo 'Push stuff via: arr --push "one" --to SUPER_DETH'
-	arr --push "one" --to "SUPER_DETH"
-	echo 'And something else for the hell of it: arr --push "two" --to SUPER_DETH'
+	printf "%s\n" 'Push stuff via: arr --push "one" --to SUPER_DETH'
+	printf "\t%s\n" 'arr --push "two" --to SUPER_DETH'
 	arr --push "two" --to "SUPER_DETH"
-
 	# Show us...
-	op 'arr --elements --within SUPER_DETH'
-	arr --elements --within SUPER_DETH 
+#	op 'arr --elements --within SUPER_DETH'
+#	arr --elements --within SUPER_DETH 
 
 	# Show more...
-	op 'arr --reveal --within SUPER_DETH'
-	arr --reveal --within SUPER_DETH 
+#	op 'arr --reveal --within SUPER_DETH'
+#	arr --reveal --within SUPER_DETH 
 	#JOLLY_BEANS[15]="xxx"
 	#echo '# handle sparseness'
 	#echo ${JOLLY_BEANS[@]}		# two elements should show
