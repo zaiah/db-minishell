@@ -26,47 +26,67 @@ in_arr() {
 	while [ $# -gt 0 ]
 	do
 	   case "$1" in
+		  -a|--array)
+				shift
+			  __ARRY__="$1"
+			;;
 	     -t|--this)
-	         DO_THIS=true
 	         shift
-	         THIS="$1"
+	         in_arr_THIS="$1"
 	      ;;
+			# Default...
 	     -b|--boolean)
-	         DO_BOOLEAN=true
+	         in_arr_DO_BOOLEAN=true
 	      ;;
 	     -i|--index)
-	         DO_INDEX=true
+	         in_arr_DO_INDEX=true
 	      ;;
-	     -a|--at)
-	         DO_AT=true
-	         shift
-	         AT="$1"
-	      ;;
-	     -v|--verbose)
-	        VERBOSE=true
-	      ;;
+		  -f|--first-match)
+			   in_arr_FIRST_MATCH=true
+			;;
 	     -h|--help)
 	        in_arr_usage 0
 	      ;;
 	     --) break;;
 	     -*)
-	      printf "Unknown argument received.\n" > /dev/stderr;
+	      printf "Unknown argument received: $1\n" > /dev/stderr;
 	      in_arr_usage 1
 	     ;;
 	     *) break;;
 	   esac
 	shift
 	done
-	
-	[ ! -z $DO_BOOLEAN ] && {
-	   printf '' > /dev/null
+
+	# Load the array.
+	__ARR__=( $(eval 'echo ${'$__ARRY__'[@]}') )
+
+	# Set boolean to default...
+	[ -z $in_arr_DO_BOOLEAN ] && [ -z $in_arr_DO_INDEX ] && {
+		in_arr_DO_BOOLEAN=true
 	}
-	
-	[ ! -z $DO_INDEX ] && {
-	   printf '' > /dev/null
-	}
-	
-	[ ! -z $DO_AT ] && {
-	   printf '' > /dev/null
-	}
+
+	# Compare each element.
+	for __ELE__ in `seq 0 $(( ${#__ARR__[@]} - 1 ))`
+	do
+		# Does it exist?
+		if [[ ${__ARR__[$__ELE__]} == $in_arr_THIS ]]
+		then 
+			STAT=true
+			[ ! -z $in_arr_DO_BOOLEAN ] && printf true && break
+			[ ! -z $in_arr_DO_INDEX ] && printf "%d" $__ELE__ && break
+		fi
+	done
+
+	[ -z $STAT ] && [ ! -z $in_arr_DO_BOOLEAN ] && printf false 
+
+	# Clean up.
+	unset __ELE__
+	unset __ARR__
+	unset __ARRY__
+	unset STAT
+	unset in_arr_THIS
+	unset in_arr_DO_BOOLEAN
+	unset in_arr_DO_INDEX
+	unset in_arr_DO_AT 
+	unset in_arr_VERBOSE
 }
