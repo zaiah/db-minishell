@@ -32,8 +32,8 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
  }
  buildlib=buildlib {
   _libupdate_.sh
-  arrtest.sh
   arr.sh
+  arrtest.sh
   col_wrap.sh
   help.sh
   in_arr.sh

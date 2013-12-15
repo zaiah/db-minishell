@@ -16,7 +16,6 @@ arr() {
 	-f | --from <arg>             desc
 	-r | --reveal                 desc
 	-d | --destroy <arg>          desc
-	-p | --pull-unique            desc
 	-e | --elements               desc
 	-w | --within <arg>           desc
 	-v | --verbose                Be verbose in output.
@@ -41,6 +40,9 @@ arr() {
 	         shift
 	         POP="$1"
 	      ;;
+	     --strict-pop)
+	         DO_POP_LAST=true
+			;;
 	     -t|--to)
 	         DO_TO=true
 	         shift
@@ -58,9 +60,6 @@ arr() {
 	         DO_DESTROY=true
 	         shift
 	         __ARRY__="$1"
-	      ;;
-	     -p|--pull-unique)
-	         DO_PULL_UNIQUE=true
 	      ;;
 	     -e|--elements)
 	         DO_ELEMENTS=true
@@ -99,31 +98,49 @@ arr() {
 
 	# This can handle multiple arguments.  Maybe...
 	# Bash arrays can be sparse, so...this is hard to deal with...
-	[ ! -z $DO_PUSH ] && {
-	echo 'blig'
-		#echo $PUSH
-		__ARY__[${#__ARY__[@]}]="$PUSH"
-		echo ${#__ARY__[@]}
 
+	# Push to array.
+	[ ! -z $DO_PUSH ] && {
+		# Add like normal.
+		__ARY__[${#__ARY__[@]}]="$PUSH"
+		# printf "%d" ${#__ARY__[@]}
+
+		# Reload 
 		eval $__ARRY__'="'${__ARY__[@]}'"'
-	   printf '' > /dev/null
+	}
+
+	# Pop from array.
+	[ ! -z $DO_POP ] && [ ! -z "$POP" ] && {
+		# Let the code go through and find the element to pop.
+		for __CPOP__ in `seq 0 ${#__ARY__[@]}`
+		do
+			[[ ${__ARY__[$__CPOP__]} == $POP ]] && {
+				unset __ARY__[$__CPOP__]
+			}
+		done
+		unset __CPOP__
+		
+		# Reload 
+		eval $__ARRY__'="'${__ARY__[@]}'"'
+
+		# Clean up.
+		unset __POP_ELEMENTS__
+	}
+
+	# Pop last element from array.
+	[ ! -z $DO_POP_LAST ] && {
+		unset __ARY__[$(( ${#__ARY__[@]} - 1 ))]
 	}
 	
-	[ ! -z $DO_POP ] && {
-	   printf '' > /dev/null
-	}
-	
+	# Show what's in an array.
 	[ ! -z $DO_REVEAL ] && {
-#		ti '${__ARRY__} (arrname)' "${__ARRY__}"
-#		ti '${__ARY__}' "${__ARY__}"
-#		ti '${__ARY__[@]}' "${__ARY__[@]}"
-#		ti '${#__ARY__[@]}' "${#__ARY__[@]}"
-		echo ${#__ARY__[@]}
-	   printf '' > /dev/null
+		printf "%s " ${__ARY__[@]}
+		printf "\n"
 	}
-	
+
+	# Destroy the array.
 	[ ! -z $DO_DESTROY ] && {
-	   printf '' > /dev/null
+		unset $__ARRY__
 	}
 	
 	[ ! -z $DO_PULL_UNIQUE ] && {
@@ -141,6 +158,7 @@ arr() {
 	unset __ARRY__  # What happens when we start working with MANY arrays...
 	unset DO_PUSH
 	unset DO_POP
+	unset DO_POP_LAST
 	unset DO_TO
 	unset DO_FROM
 	unset DO_REVEAL

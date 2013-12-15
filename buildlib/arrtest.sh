@@ -77,32 +77,23 @@ function ti() {
 	# That basic stuff seems to work.
 	# Let's do it all again...
 	declare -a SUPER_DETH
-#	echo "Make a new array called SUPER_DETH"
-#	op "arr --elements --within SUPER_DETH"
-#	SUPER_DETH[0]="ONE"
-#	SUPER_DETH[1]="ONE"
-	echo "Now global: $__ARY__"
+	echo "Add three elements to a new array called SUPER_DETH."
 	arr --push "ONE" --to "SUPER_DETH"
 	arr --push "TWO" --to "SUPER_DETH"
-	echo "Now global: ${__ARY__[@]}"
-#	arr --elements --within SUPER_DETH 
-	arr --reveal --within SUPER_DETH 
-#	arr --reveal --within SUPER_DETH 
-#	echo "'${SUPER_DETH[@]}'"
 
-exit
 	# Push some stuff to it.
-	printf "%s\n" 'Push stuff via: arr --push "one" --to SUPER_DETH'
-	printf "\t%s\n" 'arr --push "two" --to SUPER_DETH'
 	arr --push "two" --to "SUPER_DETH"
-	# Show us...
-#	op 'arr --elements --within SUPER_DETH'
-#	arr --elements --within SUPER_DETH 
+	arr --reveal --within SUPER_DETH 
+
+	# Pop.
+	arr --pop "TWO" --from "SUPER_DETH"	
+	arr --reveal --within SUPER_DETH 
+
+	arr --strict-pop --from "SUPER_DETH"
+	arr --reveal --within SUPER_DETH 
+	arr --destroy SUPER_DETH
+
+	arr --reveal --within SUPER_DETH 
 
 	# Show more...
-#	op 'arr --reveal --within SUPER_DETH'
-#	arr --reveal --within SUPER_DETH 
-	#JOLLY_BEANS[15]="xxx"
-	#echo '# handle sparseness'
-	#echo ${JOLLY_BEANS[@]}		# two elements should show
 }
