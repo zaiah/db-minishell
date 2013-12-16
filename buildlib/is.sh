@@ -2,129 +2,9 @@
 # is
 #
 # Check if an element is of particular type.
-#-----------------------------------------------------#
-
-# Includes extract_real_match() 
-# for now...
-
-#-----------------------------------------------------#
-# extract_real_match ()
 #
-# Find an exact match.
-# Grep fails for searches like this.
+# Right now, `is` is blitheringly slow.
 #-----------------------------------------------------#
-extract_real_match () {
-	# Make stuff local
-	local NAME=
-	local NAME=
-	local VERBOSE=
-	local DO_FUNCTION=
-	local DO_INCLUDE_COMMENTS=
-	local FILE=
-
-	# Options.
-	while [ $# -gt 0 ]
-	do
-		case "$1" in
-		-f|--find)
-				shift
-				NAME="$1"
-			;;
-		-i|--include-comments)
-				DO_INCLUDE_COMMENTS=true
-			;;
-		-f|--function)
-				DO_FUNCTION=true
-			;;
-		-w|--within)
-			shift
-			FILE="$1"
-			;;
-		-v|--verbose)
-			VERBOSE=true
-			;;
-		-h|--help)
-			exit 0
-			;;
-		--) break;;
-		-*)
-			printf "Unknown argument received.\n" > /dev/stderr;
-			exit 1
-		;;
-		*) break;;
-		esac
-	shift
-	done
-
-	# Set to stdin if not some other file.
-	[ -z "$FILE" ] && FILE=/dev/stdin
-	# cat $FILE
-
-	# Set a name.
-	[ -z "$NAME" ] && { 
-		printf "No term to search for." > /dev/stderr
-	} 
-
-	# Some overrides.
-
-	# Find the function name within the file.
-	# (Example: $PROGRAM -x pear --from mega.sh)
-	# 
-	# What if there are multiple of the same name?
-	# If a conflict like this is found, best to examine
-	# both functions as temporary files or let the user know.
-	#
-	# Find the line number containing our name, if more
-	# than one match, handle it properly.
-	SLA="$(grep --line-number "$NAME" "$FILE" | \
-		awk -F ':' '{ print $1 }')"
-
-	# Could have many matches.
-	[ ! -z "$SLA" ] && SLA=( $SLA )
-#cat $FILE
-	grep "$NAME" "$FILE" 
-#	echo ${SLA[@]}
-	exit
-	# In said line, check to make sure that $NAME 
-	# is actually $NAME and not part of something else.
-	for POSS_RANGE in ${SLA[@]}
-	do
-		# Process this one line.
-		FEXSRC="$(sed -n ${POSS_RANGE}p ${FROM} 2>/dev/null)"
-
-		# Disregard comment blocks.
-		[[ "$FEXSRC" =~ "#" ]] && {
-			# Check everything before the first comment.
-			FEXSRC="${FEXSRC%%#*}"
-		}
-
-		# If matched line doesn't contain (), next match. 
-		[[ ! "$FEXSRC" =~ "(" ]] || [[ ! "$FEXSRC" =~ ")" ]] && {
-			continue	
-		}
-
-		# Remove leading white space and function wraps...
-		FEXLINE="$( printf "%s" $FEXSRC | \
-			sed "s/^[ \t]*\($NAME\).*/\1/g")" 
-
-		# ... to check if script received an accurate match.
-		[[ ! "$FEXLINE" == $NAME ]] && {
-			continue	
-		}
-
-		# If all checks are good, there's the line range.
-		SL=$POSS_RANGE
-		break
-	done
-
-	# Unset mania!
-	unset FIND
-	unset VERBOSE
-	unset DO_FUNCTION
-	unset DO_INCLUDE_COMMENTS
-}
-
-
 is() {
 	local DO_WHAT=
 	local DO_INTEGER=
@@ -142,14 +22,12 @@ is() {
 	   echo "Usage: ./$LIBPROGRAM
 		[ -  ]
 	
-	-w | --what <arg>             desc
-	-i | --integer <arg>          desc
-	-s | --string <arg>           desc
-	-a | --array <arg>            desc
-	-t | --temporary <arg>        desc
-	-f | --fifo <arg>             desc
-	-p | --pipe <arg>             desc
-	-d | --device <arg>           desc
+	-w | --what <arg>             Find the type of <arg>. 
+	-i | --integer <arg>          Check if <arg> is an integer. 
+	-s | --string <arg>           Check if <arg> is a string. 
+	-a | --array <arg>            Check if <arg> is an array. 
+	-f | --function <arg>         Check if <arg> is a function.
+	-r | --return <arg>           Supply the value in the return message.
 	-v | --verbose                Be verbose in output.
 	-h | --help                   Show this help and quit.
 	"
@@ -162,6 +40,9 @@ is() {
 	while [ $# -gt 0 ]
 	do
 	   case "$1" in
+		   -d|--diag|--diagnostic)
+				DIAG=true
+			;;
 	     -w|--what)
 	         DO_WHAT=true
 	         shift
@@ -171,6 +52,11 @@ is() {
 	         DO_INTEGER=true
 	         shift
 	         INTEGER="$1"
+	      ;;
+	     -f|--function)
+	         DO_FUNCT=true
+	         shift
+	         FUNCT="$1"
 	      ;;
 	     -s|--string)
 	         DO_STRING=true
@@ -190,7 +76,7 @@ is() {
 	      ;;
 	     --) break;;
 	     -*)
-	      printf "Unknown argument received.\n" > /dev/stderr;
+	      printf "Unknown argument received: $1\n" > /dev/stderr;
 	      is_usage 1
 	     ;;
 	     *) break;;
@@ -201,94 +87,130 @@ is() {
 	# ...
 	
 	[ ! -z $DO_WHAT ] && {
-		# Is it blank?
-		WHAT=${WHAT:-"null"}		
-
 		# Something.
-		#[[ ! "$WHAT" == "null" ]] && {
 		[ ! -z "$WHAT" ] && {
-			# You need something to evaluate what type...
-			# After the grep...
-#			declare | grep "$WHAT" | \
-#				extract_real_match --find "$WHAT"
-			declare | grep "$WHAT" 
+			declare | grep "$WHAT" | ( \
+				# I can only use /dev/stdin once?
+				STDIN=$(</dev/stdin)
 
-			# Evaluate the type.
-			# Remember that using grep could result in false positives all day.
-			declare | grep "$WHAT" | (
-				echo "Value: [ ${!WHAT} ]"
+				# 
+				EMP=$( printf "%s" "$STDIN" | grep "$WHAT=''" )
+				STR=$( printf "%s" "$STDIN" | grep "$WHAT='" )
+				FUN=$( printf "%s" "$STDIN" | grep "$WHAT ()")
+				ARR=$( printf "%s" "$STDIN" | grep "$WHAT=(" )
+				OTH=$( printf "%s" "$STDIN" | grep "$WHAT=" )
 
-				# String
-				if [ ! -z "$( grep "${WHAT}='" )" ]
-				then
-					echo "string"
+				# Debugging's sake
+				[ ! -z $DIAG ] && {
+					(
+					 printf -- "%s\n" "stdin: $STDIN"
 
-				# Empty string.
-				elif [ ! -z "$( grep "${WHAT}=''" )" ]
-				then
-					echo "empty"
+					 printf -- "%s\n" "string: $STR"
+					 printf -- "%s\n" "empty string: $EMP"
+					 printf -- "%s\n" "array: $ARR"
+					 printf -- "%s\n" "integer: $INT"
+					 printf -- "%s\n" "function: $FUN"
+					 printf -- "%s\n" "other: $OTH"
+					 printf -- "%s\n" "null: $NIL"
+					) > /dev/stderr
+				}
 
-				# Function 
-				elif [ ! -z "$( grep --fixed-strings "${WHAT} ()" )" ]
-				then
+				# Strings are still returning false positives.
+				# POUND and APOUND are both returned.
+
+				# Function
+				if [ ! -z "$FUN" ]; then
 					echo "function"
 
+				# String
+				elif [ ! -z "$STR" ]; then
+					echo "string"
+
+				# Empty (on some architectures)
+				elif [ ! -z "$EMP" ]; then
+					echo "empty"
+
 				# Array 
-				elif [ ! -z "$( grep "${WHAT}=(" )" ]
-				then
+				elif [ ! -z "$ARR" ]; then
 					echo "array"
 
-				# Integer
-				elif [ ! -z "$( grep "${WHAT}=" )" ]
-				then
-					echo "integer"
+				# Any other test.
+				elif [ ! -z "$OTH" ]; then
+					# Empty (nothing, the var has simply been set...) 
+					if [ -z "${!WHAT}" ]; then 
+						echo "empty"  
+
+					# Test for strings and integers.
+					else
+						WHAT_VALUE="${!WHAT}"
+						for CHAR_INC in `seq 0 $(( ${#WHAT_VALUE} - 1 ))`
+						do
+							# echo ${WHAT_VALUE:${CHAR_INC}:1}
+							[[ ! ${WHAT_VALUE:${CHAR_INC}:1} == [0-9] ]] && {
+								IS_STR=true	
+								break
+							}
+						done
+					
+						# Return type.	
+						[ ! -z $IS_STR ] && echo "string" || echo "integer"
+						unset CHAR_INC
+						unset IS_STR
+					fi	
 
 				# ...
 				else
-					echo "nothing"
+					# The variable isn't defined yet.
+					# Not sure what status to return?
+					echo "undefined"
 				fi
-			)
 
-
-#				# If matched line doesn't contain (), next match. 
-#				[[ ! "$FEXSRC" =~ "(" ]] || [[ ! "$FEXSRC" =~ ")" ]] && {
-#					continue	
-#				}
-#
-#				# Remove leading white space and function wraps...
-#				FEXLINE="$( printf "%s" $FEXSRC | \
-#					sed "s/^[ \t]*\($NAME\).*/\1/g")" 
-#
-#				# ... to check if script received an accurate match.
-#				[[ ! "$FEXLINE" == $NAME ]] && {
-#					continue	
-#				}
-#
-#				# String
-#				if [ grep "$WHAT=" ]
-#
-#				# Array
-#				elif [ ]
-#
-#				# Function 
-#				elif [ ]
-#
-#				# Integer
-#				else
-#				fi
-		}  
+				# Free (not sure if our memory usage actually goes down or not)
+				unset STDIN
+				unset STR
+				unset EMP
+				unset FUN
+				unset ARR
+				unset INT	
+			) 
+		} || echo "undefined"  
 	}
-	
+
+	# Do a function test.
+	[ ! -z $DO_FUNCT ] && {
+		declare | grep "$FUNCT ()"
+#		FUN=$( printf "%s" "$STDIN" | grep "$WHAT ()")
+		[ 0 ] && echo true || echo false
+	}
+
+	# Do an integer test.	
 	[ ! -z $DO_INTEGER ] && {
-	   printf '' > /dev/null
+		WHAT_VALUE="${!WHAT}"
+		for CHAR_INC in `seq 0 $(( ${#WHAT_VALUE} - 1 ))`
+		do
+			[[ ! ${WHAT_VALUE:${CHAR_INC}:1} == [0-9] ]] && {
+				IS_STR=true	
+				break
+			}
+		done
+
+		# Return 
+		[ ! -z $IS_STR ] && echo false || echo true
+
+		# Free and unset
+		unset CHAR_INC
+		unset IS_STR
 	}
-	
+
+	# Do a string test.	
 	[ ! -z $DO_STRING ] && {
-	   printf '' > /dev/null
+		EMP=$( printf "%s" "$STDIN" | grep "$WHAT=''" )
+		STR=$( printf "%s" "$STDIN" | grep "$WHAT='" )
 	}
-	
+
+	# Do an array test.	
 	[ ! -z $DO_ARRAY ] && {
-	   printf '' > /dev/null
+		STR=$( printf "%s" "$STDIN" | grep "$WHAT=('" )
 	}
 
 	# Mass unset.	
@@ -303,15 +225,3 @@ is() {
 	unset VERBOSE 
 }
 
-function etcbob() {
-	echo "hello"
-}
-
-function bb() 
-{
-	echo "hello"
-}
-
-ETC="your mom"
-is --what "ETC"
-is --what "bb"
