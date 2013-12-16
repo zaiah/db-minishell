@@ -9,6 +9,7 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
  ms-test.sh
  lib=lib {
   __.sh
+  arrayify.sh
   break_list_by_delim.sh
   break_maps_by_delim.sh
   eval_flags.sh
@@ -35,9 +36,15 @@ dbm=/home/zaiah/projects/db_minishell CD=. {
   arr.sh
   arrtest.sh
   col_wrap.sh
+  ermtest.sh
+  extract_real_match
+  extract_real_match.sh
   help.sh
+  ia_test.sh
   in_arr.sh
   is.sh
+  is_test.sh
+  locality-test.sh
   no_conflict.sh
   not_more_than_one.sh
   parse_range.sh
