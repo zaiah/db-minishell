@@ -233,6 +233,11 @@ is() {
 				then
 					echo "function"
 
+				# Array 
+				elif [ ! -z "$( grep "${WHAT}=(" )" ]
+				then
+					echo "array"
+
 				# Integer
 				elif [ ! -z "$( grep "${WHAT}=" )" ]
 				then
