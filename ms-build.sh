@@ -108,6 +108,7 @@ usage() {
 while [ $# -gt 0 ]
 do
    case "$1" in
+		# This option needs to tie both dbm and dba together and do other stuff...
      -b|--library)
          DO_PACK=true
          DO_LIBRARY=true
@@ -138,10 +139,12 @@ do
      -a|--admin)
          DO_PACK=true
          DO_ADMIN=true
+			FILE="$BINDIR/dba.sh"
       ;;
      -r|--orm)
          DO_PACK=true
          DO_ORM=true
+			FILE="$BINDIR/dbm.sh"
       ;;
      -s|--stdout)
         TO_STDOUT=true
@@ -248,10 +251,23 @@ then
 	# Generate a temporary file for the new library.
 	tmp_file -n LIBTMP
 	LIBFN="$LIBTMP"
-	[ ! -z "$PACK_LIB_AT" ] && LIB_FINAL="$PACK_LIB_AT" || LIB_FINAL="/dev/stdout"
+
+	# Output where?
+	if [ ! -z "$PACK_LIB_AT" ]
+	then 
+		[[ "$PACK_LIB_AT" == 'dbm.sh' ]] || [[ "$PACK_LIB_AT" == 'dba.sh' ]] && {
+			{
+				printf -- "Name: $PACK_LIB_AT is an illegal name.  (It will overwrite the libraries already in existence.)\n"
+				printf -- "Please choose another.\n"
+			} > /dev/stderr
+		}
+		LIB_FINAL="$PACK_LIB_AT"
+	else
+		LIB_FINAL="/dev/stdout"
+	fi
 
 	# Generate the code for the library.
-	( 
+	{ 
 		# Generate a license if asked for.
 		[ -z "$NO_LICENSE" ] && parse_range -f "$MKR_LIC" -t "$MKR_LIC END" -w $FILE
 
@@ -280,12 +296,12 @@ then
 		parse_range -f "$MKR_LOC" -t "$MKR_LOC END" -w $FILE | sed 's/^/\t/g'
 
 		# Cycle through options and real code.
-		pick_off "$MKR_OPT"
-		pick_off "$MKR_COD"
+		pick_off "$MKR_OPT" #workspace/opt
+		pick_off "$MKR_COD" #workspace/cod
 
 		# Wrap up the function. 
 		printf "\n}\n"
-	) > $LIBFN
+	} > $LIBFN
 
 	# Remove comments if asked for.
 	[ ! -z $NO_COMMENTS ] && printf > /dev/null
@@ -294,14 +310,14 @@ then
 	tmp_file -n FERR
 	$TEST_SHELL $LIBFN 2>$FERR
 	[ ! $(wc -c $FERR | awk '{print $1}') -eq 0 ] && {
-		( 
+		{ 
 			printf "Something went wrong when creating the db_minishell library.\n"
 			printf "Please try again or check if any features that were added are not interpreted correctly by the shell.\n" 
 			printf "\n"
 			printf "Error is as follows:\n"
 			printf "====================\n"
 			cat $FERR
-		) > /dev/stderr
+		} > /dev/stderr
 
 		rm $FERR
 		tmp_file -w

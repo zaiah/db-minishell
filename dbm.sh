@@ -1,9 +1,9 @@
 #!/bin/bash -
 # [ LICENSE ] 
 #-----------------------------------------------------#
-# db-minishell
+# dbms-orm
 #
-# Manages simple SQL queries via Bash.
+# A shell tool for ORM functionality.
 #-----------------------------------------------------#
 #-----------------------------------------------------#
 # ---------
@@ -31,7 +31,7 @@
 # THE SOFTWARE.
 #-----------------------------------------------------#
 # [ LICENSE ] END
-PROGRAM="db-minishell"
+PROGRAM="dbm"
 
 # References to $SELF
 [ -z $DO_LIBRARIFY ] && {
@@ -48,7 +48,6 @@ usage() {
    echo "Usage: ./${PROGRAM}
 	[ - ]
 
-ORM functions:
 -d | --database <arg>        Choose a database to work with. 
      --table <arg>           Set table <arg> as the active table. 
 -s | --select <arg>          Select <arg> columns from a table. 
@@ -75,38 +74,11 @@ ORM functions:
 -e | --set <arg>             Set <column> = <value>
 -r | --remove                Delete entry or entries depending on clause. 
      --delete                Non SQL-compliant synonym for --delete
--f | --from <arg>            If \$__TABLE not set, set this to choose a
-                             table to use in a SELECT statement.
-
-
-Administrative Functions:
--c | --columns               List the columns of tables within database.
-     --tables                List all tables in a database.
-     --tables-and-columns    List both the columns and tables within a database.
--dt| --datatypes             List dataypes of all columns of all tables in database.
-     --schemata              List schema for all tables in database.
-     --of <arg>              Specifies a table to use to limit output of 
-                             --columns and --datatypes commands.
-     --set-id <colname>      Set the id column name ('id' is default 
-	                          column name.)
-     --vardump               List results as a variable dump.
-     --rename <arg>          Rename table <arg>. (Use in concert with --to) 
-     --to <arg>              Name to rename table to. 
-     --alter <arg>           If \$__TABLE not set, use this to choose a table 
-                          to alter.
-     --adding <arg>          Add column(s) <arg> to a table.
-     --removing <arg>        Remove column(s) <arg> from a table.
-     --drop <arg>            Drop a table <arg> from a database.
-     --raw <arg>             Send this raw statement onto the SQLite database. 
-     --echo                  Echo back SQL statements for debugging.
-
-
-General Options:
-     --install <dir>         Install to a location. <dir> must be absolute.
 -v | --verbose               Be verbose in output.
 -h | --help                  Show this help and quit.
 "
-   exit $STATUS
+
+	exit $STATUS
 }
 
 
@@ -141,10 +113,8 @@ else
 	# Use something as a log file.
 	LOGFILE="/dev/stderr"
 fi
-
-# Arrays
-declare -a OR_X_AND			# Is it an OR or AND clause?
 # [ LOCAL ] END
+
 
 # [ OPTS ] 
 # Process options.
@@ -160,84 +130,6 @@ do
 			shift
 			__TABLE="$1"
 		;;
-
-		# [ ADMIN ]
-		-c|--columns)
-			DO_GET_COLUMNS=true
-		;;
-
-		-dt|--datatypes)
-			DO_GET_DATATYPES=true
-		;;
-
-		--tables)
-			DO_SHOW_TABLES=true
-		;;
-		
-		--tables-and-columns)
-			DO_SHOW_TABLES_AND_COLUMNS=true
-		;;
-
-		--schemata)
-			DO_GET_SCHEMATA=true
-		;;
-
-		--of)
-			shift
-			__TABLE="$1"
-		;;
-
-	 	--echo)
-			 ECHO_BACK=true
-	 	;;
-
-		--alter)
-			DO_ALTER=true
-			shift
-			__TABLE="$1"
-		;;
-
-		--rename)
-			DO_ALTER=true
-			DO_ALTER_NAME=true
-			shift
-			__TABLE="$1"
-		;;
-
-		--transfer)
-			DO_ALTER=true
-			DO_TRANSFER=true
-			shift
-			__TABLE="$1"
-		;;
-
-		--to)
-			shift
-			RENAME_TO="$1"
-		;;
-
-		# --from () is much simpler to read...and more natural than alter...
-		--adding)
-			DO_ALTER=true
-			shift
-			COLUMN_TO_ADD="$1"
-		;;
-
-		--removing)
-			DO_ALTER=true
-			shift
-			COLUMN_TO_REMOVE="$1"
-		;;
-
-		--drop)
-			DROP_TABLE=true
-		;;
-
-		# Things like transactions and other complexity will go here.
-		--raw)
-		;;
-
-		# [ ADMIN ] END
 
 		# [ ORM ] 
 		-s|--select)
@@ -416,12 +308,6 @@ do
 		# [ EXTENSIONS ] END
 
 		# [ SYSTEM ] 
-	 	--install)
-			 DO_INSTALL=true
-			 shift
-			 INSTALL_DIR=$1
-		 ;;
-
 	 	-v|--verbose)
 			 VERBOSE=true
 	 	 ;;
@@ -434,7 +320,7 @@ do
 		--) break;;
 
 		-*)
-			printf "Unknown argument received.\n";
+			printf "Unknown argument received: $1\n";
 			$__EXIT__ 1
 		;;
 
@@ -457,203 +343,6 @@ done
 	installation --do --this "db-minishell" --to $INSTALL_DIR
 }
 # [ SYSTEM ] END
-
-# [ ADMIN ]
-# get a column listing 
-[ ! -z $DO_GET_COLUMNS ] && {
-	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
-
-	# Anywhere a __TABLE is present, check the first chars and make
-	# sure they're not flags.
-	parse_schemata --of $__TABLE --columns	
-}
-
-
-# get a datatype listing 
-[ ! -z $DO_GET_DATATYPES ] && {
-	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
-	#$__SQLITE__ $DB ".schema ${__TABLE}"
-	parse_schemata --of $__TABLE --datatypes
-}
-
-
-# Get entire schemata.
-[ ! -z $DO_GET_SCHEMATA ] && {
-	[ -z "${__TABLE}" ] && echo "No table to operate on!" && $__EXIT__ 1
-	$__SQLITE__ $DB ".schema ${__TABLE}"
-}
-
-
-
-# Perform a table alteration. 
-[ ! -z $DO_ALTER ] && {
-	# Just change the name.
-	[ ! -z $DO_ALTER_NAME ] && {
-		if [ ! -z "$RENAME_TO" ]
-		then
-			$__SQLITE__ $DB "ALTER TABLE $__TABLE RENAME TO $RENAME_TO" 
-		else
-			printf "No name supplied to flag --to when renaming.\n" > /dev/stderr
-		fi
-	}
-
-	# Should probably die out with something.
-
-	# Add or remove columns.
-	# Notice that we can add and remove.
-	if [ ! -z "$COLUMN_TO_ADD" ] && [ -z "$COLUMN_TO_REMOVE" ]
-	then
-		COLREC=
-		UNPROC_CNAME=
-		COLUMN_NAME_AND_TYPE=
-
-		# Break each column up.
-		for CTA in $(break_list_by_delim $COLUMN_TO_ADD) 
-		do
-			# Go through each one processing the results.
-		   if [[ "$CTA" =~ "=" ]]
-			then
-				# Break each up.
-				# Probably should check that it's a valid datatype.
-				COLUMN_NAME_AND_TYPE="$(break_maps_by_delim $CTA)"
-			else
-				# Automatically assumes text.
-				COLUMN_NAME_AND_TYPE="$CTA TEXT"
-			fi
-
-			# Make the change.
-			[ ! -z $ECHO_BACK ] && {
-				printf "$__SQLITE__ $DB"
-				printf " 'ALTER TABLE $__TABLE ADD COLUMN $COLUMN_NAME_AND_TYPE'\n"
-			}
-		
-			# Add the column(s) 
-			$__SQLITE__ $DB \
-				"ALTER TABLE $__TABLE ADD COLUMN $COLUMN_NAME_AND_TYPE" 
-			unset CTA
-		done
-
-	# Removing is another story.
-	elif [ ! -z "$COLUMN_TO_REMOVE" ]
-	then
-		# Get headers from the table to be altered. 
-		# ( A revised parse_schemata will solve this ugliness. )
-		HEADERS=( $(parse_schemata --of $__TABLE --columns) )
-
-		# More debugging...
-		#parse_schemata --of $__TABLE --columns
-		#parse_schemata --of $__TABLE --datatypes
-		 
-		# Check for --adding statements.
-		# Make sure they're not in the HEADERS.
-#		[ ! -z "$COLUMN_TO_ADD" ] && {
-#			for CTA in $(break_list_by_delim $COLUMN_TO_ADD) 
-#			do
-#				if [[ "$CTA" =~ "=" ]]
-#				then
-#					COLUMN_NAME_AND_TYPE="$(break_maps_by_delim $CTA)"
-#				else
-#					COLUMN_NAME_AND_TYPE="$CTA TEXT"
-#				fi
-#		
-#				COLUMN_NAME_TERM="$(printf "%s" ${COLUMN_NAME_AND_TYPE} | \
-#					awk '{print $1}')"
-#
-#				# Check for the element...
-#				is_element_present_in "HEADERS" ${COLUMN_NAME_TERM}
-#			done
-#	}
-
-
-for CTA in $(arrayify -d ',' --this "$COLUMN_TO_ADD") 
-do
-	[[ $CTA =~ "=" ]] && {
-	# arr would really help right now....
-	# for realllzzz
-	# take a quick break and switch it...
-#XX=( $(arrayify -d '=' --this "$nn") )
-	}
-	
-done
-exit
-
-	# If removing, then pop those elements from HEADERS
-##	for TO_POP in ${HEADERS[@]}
-#	do
-	for TO_POP in ${HEADERS[@]}
-	do
-		printf "" > /dev/null
-	#	[[ "$TO_POP" ==
-	#echo "${HEADERS[2]}"
-	done
-#	done
-
-	# If adding, then push those elements to your new thing...
-
-
-	# Create a temporary table with current headers and extra fields. 
-
-	# Craft the SELECT statement to get records out of the the table to transfer from.
-	
-	# Load your temporary table.
-		
-	# Create the new table (with or without whatever columns are needed)
-
-	# (The temporary table should drop at the end of the transaction)
-
-	# Drop the original table.
-
-	
-	## I'd like an option to rename columns as well.  and perhaps reset datatypes...
-	fi
-tmp_file -w
-	exit
-
-	# Create the new table first.
-#	printf "CREATE TABLE $TABLE (" > $CONV
-#	printf "\n${HEADER%%,} );" >> $CONV
-#	printf "\n.separator ${SEPCHAR}" >> $CONV
-#	printf "\n.import $FSV $TABLE" >> $CONV
-#
-#	# Populate (only if we need strict data types or have a dataset we'd like to move into production.)
-#	# This assumes we've already created the table.
-#		# Check that the table exists.
-#		EXISTS=$(sqlite3 $DB '.schema' | grep "CREATE TABLE $TABLE")
-#		if [ -z "$EXISTS" ]
-#		then
-#			printf "Uh oh!\nTable [$TABLE] was not found in the database [$DB].\nExiting...\n" >&2
-#			exit 1
-#		fi
-#	
-#		# Create a temporary table and reindex properly.
-#		NO_TYPE_HEADER=$(echo $SRC | sed "s/${SEPCHAR}/, /g" | sed "s/\r//")
-#		TMP_TABLE="tmp_$TABLENAME"
-#
-#		# Generate the file.
-#		printf "CREATE TEMP TABLE $TMP_TABLE (" > $CONV
-#		printf "\n${HEADER%%,} );" >> $CONV
-#		printf "\n.separator ${SEPCHAR}" >> $CONV
-#		printf "\n.import $FSV $TMP_TABLE" >> $CONV
-#
-#		# Populate if we've already made one.
-#		printf "\nINSERT INTO $TABLE ( ${NO_TYPE_HEADER} ) SELECT * FROM $TMP_TABLE;" >> $CONV
-#		printf "\n.quit" >> $CONV
-}
-
-# Retrieve tables. 
-[ ! -z $DO_SHOW_TABLES ] && $__SQLITE__ $DB '.tables'
-
-
-# Retrieve tables and columns...
-[ ! -z $DO_SHOW_TABLES_AND_COLUMNS ] && {
-	for __XX__ in $($__SQLITE__ $DB '.tables')
-	do
-		printf "%s\n" $__XX__
-		printf "%s" $__XX__ | tr '[a-z]' '=' | sed 's/$/\n/'
-		parse_schemata --of $__XX__ --columns
-	done
-}
-# [ ADMIN ] END
 
 # [ EXTENSIONS ]
 # test 
@@ -841,8 +530,8 @@ fi
 
 # Skip unset.
 # Plumbing
-unset __SQLITE__
-unset __TABLE
+#unset __SQLITE__
+#unset __TABLE  		# --destroy-handle can kill both of these...
 
 # Clauses
 unset STMT
@@ -853,32 +542,32 @@ unset __HAVING
 unset __LIM
 unset __OFFSET
 unset __ORDER_BY
+unset __ORDER_AD
+unset SET
 
 # Queries
 unset SELECT
 unset SELECT_DISTINCT
-unset INSTALL_DIR
 unset QUERY_ARG
 unset SERIALIZATION_TYPE
 unset WRITE
 
 # Unset all flags.
-unset DO_ALTER
-unset DO_ALTER_NAME
+unset DO_SEND_QUERY
 unset DO_DISTINCT
 unset DO_FROM
-unset DO_GET_COLUMNS
-unset DO_GET_DATATYPES
 unset DO_ID
-unset DO_INSTALL
+unset DO_SELECT
 unset DO_REMOVE
-unset DO_SHOW_TABLES_AND_COLUMNS
-unset DO_SHOW_TABLES
 unset DO_UPDATE
 unset DO_VARDUMP
 unset DO_WHERE
 unset DO_WRITE_FROM_MEM
-unset ECHO_BACK
+
+# General
 unset VERBOSE
+unset ECHO_BACK
+unset THROW_RAW 
+unset RAW_STMT
 
 # [ CODE ] END
