@@ -13,7 +13,7 @@ BUILD="$BINDIR/ms-build.sh"
 DB="$BINDIR/tests/mytest.db"
 SQLITE="/usr/bin/sqlite3"
 TABLE="tests"
-CALLNAME="dbm"
+CALLNAME="dbm --echo -d $DB -t $TABLE"
 
 #-----------------------------------------------------#
 # get_random_number()
@@ -203,6 +203,8 @@ usage() {
 -r | --remove                 Test removals.
 -e | --modify                 Modify some records.
 -s | --select                 Selects all records.
+-x | --exhaustive             Runs all tests.
+
 -v | --verbose                Be verbose in output.
 -h | --help                   Show this help and quit.
 "
@@ -228,26 +230,34 @@ do
 			shift
 			FILL_THIS_MANY="$1"
       ;;
-     -a|--add)
-         DO_ADD=true
-      ;;
-     -r|--remove)
-         DO_REMOVE=true
-      ;;
-     -m|--modify)
-         DO_MODIFY=true
-      ;;
-     -s|--select)
-         DO_SELECT=true
-      ;;
      -w|--with)
         shift
 		  WITH_THIS="$1"
       ;;
-     -e|--entire)
-       	# Run all tests.
-			DO_ENTIRE=true 
+
+     -a|--add)
+			CLI_TEST=true
+         DO_ADD=true
       ;;
+     -r|--remove)
+			CLI_TEST=true
+         DO_REMOVE=true
+      ;;
+     -m|--modify)
+			CLI_TEST=true
+         DO_MODIFY=true
+      ;;
+     -s|--select)
+			CLI_TEST=true
+         DO_SELECT=true
+      ;;
+		-x|--exhaustive) 
+			CLI_TEST=true
+         DO_ADD=true
+         DO_REMOVE=true
+         DO_MODIFY=true
+         DO_SELECT=true
+		;;
 		# Be verbose.
 		-v|--verbose) 
 			VERBOSE=true
@@ -324,16 +334,18 @@ then
 	[ ! -z "$WITH_THIS" ] && DBM="$WITH_THIS" || {
 		tmp_file -n DBM
 		$BUILD -b -n $CALLNAME > $DBM
-	}	
+	}
 
+	# ...
 	source $DBM
 
 	# Populate the database.
 	tmp_file -n DATA_LOAD
-	( 
+	{ 
 	for EACH in $(seq 0 $FILL_THIS_MANY)
 	do
-		# Is this quicker to run once each time?  or load each array depending on how many results are there?
+		# Is this quicker to run once each time?  
+		# or load each array depending on how many results are there?
 		# Grendel is going to use this...
 		INSTANCE='jericurl'					# Grep one word from $WORDS
 		SRV_PATH='/home/bob/jericurl'		# ...
@@ -355,7 +367,7 @@ then
 		printf "$DESCRIPTION"
 		printf "\n"
 	done
-	) > $DATA_LOAD
+	} > $DATA_LOAD
 
 	# Run the update.
 	tmp_file -n RECORD_IMPORT
@@ -373,12 +385,106 @@ then
 fi
 
 
-# Some queries.
-[ ! -z $DO_SELECT ] && $SQLITE $DB -line "SELECT * FROM $TABLE"
-#[ ! -z $DO_REMOVE ] && $SQLITE $DB "SELECT * FROM $TABLE"
-#[ ! -z $DO_MODIFY ] && $SQLITE $DB "SELECT * FROM $TABLE"
+#------------------------------------------------------
+# As written, these commands will only work in: 
+#------------------------------------------------------
+#--                                                  --
+# sh
+# ksh
+# dtksh
+# ksh93
+# bash
+# pdksh
+# zsh
+#-----------------------------------------------------#
+[ ! -z $CLI_TEST ] && {
+	# ...
+	DB=$DB
+	TABLE=$TABLE
 
-	#	$CALLNAME --insert-from-mem
+	# Some queries.
+	[ ! -z $VERBOSE ] && {
+		printf "%s\n" "DB=$DB"
+		printf "%s\n" "TABLE=$TABLE"
+	}
+
+
+	# Select
+	[ ! -z $DO_SELECT ] && {
+		# What is running?
+
+		# This is not portable...
+		printf "%s\n" "[ SELECT ]"
+		TRAP_STMT='printf "\nRunning: "; sed -n ${LINENO}p $0 | sed "s/^[ \t]//g";printf -- "======================================\n"' 
+		trap "$TRAP_STMT" DEBUG 	
+
+		# select statements
+		# Should see all
+		$CALLNAME --select '*'
+		$CALLNAME --select-all 
+
+		# Should only get a certain row...
+		$CALLNAME --distinct 'instance_name,user_owner'
+
+		# Only 10
+		$CALLNAME --select-all --limit 10 
+
+		# only 10, but start at id 60
+		$CALLNAME --select-all --limit 10 --offset 60 
+
+		# Some clauses
+		$CALLNAME --select-all --where 'id=10' 
+		$CALLNAME --select-all --where 'id=10' --or 'id=2'
+		# $CALLNAME --select-all --where 'user_owner=zaiah' --between 'id=2-18' --echo 		# Fails
+		$CALLNAME --select-all --between 'id=10-18'
+
+		# Grouping
+#		$CALLNAME --select-all --group-by x --having 10 
+#		$CALLNAME --select-all --group-by x --order-by instance_name 
+#		$CALLNAME --select-all --group-by x --having 10 
+#		$CALLNAME --select-all --group-by x --id 10 
+#		$CALLNAME --select-all --group-by x --having 10 
+		trap - DEBUG
+		printf "%s\n" "[ SELECT ] END"
+	}
+
+
+	# Removal
+	[ ! -z $DO_REMOVE ] && {
+		printf "%s\n" "[ REMOVE ] END"
+		TRAP_STMT='printf "\nRunning: "; sed -n ${LINENO}p $0 | sed "s/^[ \t]//g";printf -- "======================================\n"' 
+		trap "$TRAP_STMT" DEBUG 	
+
+		# Remove certain numbers.
+		$CALLNAME --select-all --where 'id=10'  # add an --affected option to tell what happened... 
+
+		# Check count.
+
+		trap - DEBUG
+		printf "%s\n" "[ REMOVE ] END"
+	}
+
+
+	# Modifications
+	[ ! -z $DO_MODIFY ] && {
+		printf "%s\n" "[ SELECT ] END"
+		TRAP_STMT='printf "\nRunning: "; sed -n ${LINENO}p $0 | sed "s/^[ \t]//g";printf -- "======================================\n"' 
+		trap "$TRAP_STMT" DEBUG 	
+
+		# Update one record.
+		$CALLNAME --select-all --where 'id=10' 
+		
+		# Check count.
+		
+		# Update many records.
+		$CALLNAME --select-all --where 'id=10' 
+
+		# Check count.
+
+		trap - DEBUG
+		printf "%s\n" "[ SELECT ] END"
+	}
+}
 
 # Clean up.
 tmp_file -w

@@ -74,6 +74,7 @@ usage() {
 -e | --set <arg>             Set <column> = <value>
 -r | --remove                Delete entry or entries depending on clause. 
      --delete                Non SQL-compliant synonym for --delete
+     --echo                  Echo back.
 -v | --verbose               Be verbose in output.
 -h | --help                  Show this help and quit.
 "
@@ -305,6 +306,9 @@ do
 			shift
 			QUERY_ARG="$1"
 		;;
+	 	--echo)
+			ECHO_BACK=true
+	 	 ;;
 		# [ EXTENSIONS ] END
 
 		# [ SYSTEM ] 

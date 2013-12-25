@@ -1,5 +1,8 @@
+# ...
+source lib/__.sh
+
 # Generation note.
-[ ! -z $VERBOSE ] && 
+[ ! -z $VERBOSE ] && { 
 	printf "Generating library...\n"
 }
 
@@ -10,10 +13,14 @@
 }
 
 
+# --------------------------------------
 # Generate markers again for testing...
+# --------------------------------------
 
 
+# --------------------------------------
 # Generate a bunch of tests dynamically
+#
 # id
 # instance_name
 # srv_path
@@ -23,6 +30,7 @@
 # last_version
 # user_owner
 # description
+# --------------------------------------
 tmp_file -n RUN_TESTS
 
 
