@@ -1,0 +1,113 @@
+# Process options.
+while [ $# -gt 0 ]
+do
+	case "$1" in
+		-d|--database)
+			shift
+			DB="$1"
+		;;
+
+		--table)
+			shift
+			__TABLE="$1"
+		;;
+
+		# [ ADMIN ]
+		-c|--columns)
+			DO_GET_COLUMNS=true
+		;;
+
+		-dt|--datatypes)
+			DO_GET_DATATYPES=true
+		;;
+
+		--tables)
+			DO_SHOW_TABLES=true
+		;;
+		
+		--tables-and-columns)
+			DO_SHOW_TABLES_AND_COLUMNS=true
+		;;
+
+		--schemata)
+			DO_GET_SCHEMATA=true
+		;;
+
+		--of)
+			shift
+			__TABLE="$1"
+		;;
+
+	 	--echo)
+			 ECHO_BACK=true
+	 	;;
+
+		--alter)
+			DO_ALTER=true
+			shift
+			__TABLE="$1"
+		;;
+
+		--rename)
+			DO_ALTER=true
+			DO_ALTER_NAME=true
+			shift
+			__TABLE="$1"
+		;;
+
+		--transfer)
+			DO_ALTER=true
+			DO_TRANSFER=true
+			shift
+			__TABLE="$1"
+		;;
+
+		--to)
+			shift
+			RENAME_TO="$1"
+		;;
+
+		# --from () is much simpler to read...and more natural than alter...
+		--adding)
+			DO_ALTER=true
+			shift
+			COLUMN_TO_ADD="$1"
+		;;
+
+		--removing)
+			DO_ALTER=true
+			shift
+			COLUMN_TO_REMOVE="$1"
+		;;
+
+		--drop)
+			DROP_TABLE=true
+		;;
+
+		# Things like transactions and other complexity will go here.
+		--raw)
+		;;
+
+		# [ ADMIN ] END
+
+		# [ SYSTEM ] 
+	 	-v|--verbose)
+			 VERBOSE=true
+	 	 ;;
+
+	 	-h|--help)
+		 	 $__EXIT__ 0
+	 	 ;;
+		# [ SYSTEM ] END
+
+		--) break;;
+
+		-*)
+			printf "Unknown argument received: $1\n";
+			$__EXIT__ 1
+		;;
+
+		*) break;;
+	esac
+	shift
+done

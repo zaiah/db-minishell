@@ -11,6 +11,9 @@ pick_off() {
 	tmp_file -n DD
 	parse_range -f "$MARKER" -t "$MARKER END" -w $FILE > $DD
 
+	# Debug
+	[ ! -z "$2" ] && cp -v $DD $2
+
 	# Only take needed options and actions from the code.
 	# Check UNPARSE above for more details.
 	for EACH_MKR in ${UNPARSE[@]}
