@@ -32,6 +32,7 @@ PROGRAM="dbm-install"
 # References to $SELF
 BINDIR="$(dirname "$(readlink -f $0)")"
 SELF="$(readlink -f $0)"
+source $BINDIR/lib/__.sh
 
 # usage - Show usage message and die with $STATUS
 usage() {
@@ -63,6 +64,8 @@ do
       ;;
      -i|--install)
          DO_INSTALL=true
+			shift
+			INSTALL_DIR="$1"
       ;;
      -u|--uninstall)
          DO_UNINSTALL=true
@@ -86,14 +89,13 @@ do
 shift
 done
 
-# first_run
-[ ! -z $DO_FIRST_RUN ] && {
-   printf '' > /dev/null
-}
 
 # install
 [ ! -z $DO_INSTALL ] && {
-   printf '' > /dev/null
+	[ -z "$INSTALL_DIR" ] && {
+		printf "No installation directory specified.\nExiting..." > /dev/stderr
+	}
+   installation --do --these "dbm,dba" --to $INSTALL_DIR
 }
 
 # uninstall

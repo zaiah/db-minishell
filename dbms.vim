@@ -1,14 +1,19 @@
 
 dbm=/home/zaiah/projects/db_minishell CD=. {
+ INSTALL
  README.md
- db-minishell.sh
  db-admin.sh
+ db-minishell.sh
+ dba.sh
+ dbm.sh
  dbms.vim
  genlibs.sh
+ get-shells.sh
+ install.sh
  ms-build.sh
  ms-test-cli.sh
  ms-test.sh
- test
+ translit.sh
  unset.sh
  lib=lib {
   __.sh

@@ -53,17 +53,17 @@ usage() {
 -s | --select <arg>          Select <arg> columns from a table. 
      --select-all            Select all columns from a table. 
      --distinct <arg>        Select distinct rows from a table. 
-     --limit <arg>           Limit result set.
+-l | --limit <arg>           Limit result set.
      --offset <arg>          Use an offset when using the limit.
-     --group-by <arg>        Group results by <arg>
-     --having <arg>          When using --group-by, select only rows having <arg> 
+-g | --group-by <arg>        Group results by <arg>
+-h | --having <arg>          When using --group-by, select rows having <arg> 
      --order-by [asc|desc]   Order the rows.
 -b | --between <arg>         Use the BETWEEN clause.
-                             (<arg> should follow the format: <col>=<min>-<max>)
+                             (<arg> should follow format: <col>=<min>-<max>)
 -w | --where <arg>           Supply a WHERE clause to tune result set. 
 -o | --or <arg>              Supply an OR clause to tune result set. 
 -z | --id <arg>              Retrieve only an id.
--sa| --show-as <arg>         Choose a serialization type.
+-a | --show-as <arg>         Choose a serialization type.
                              ( line, html, col are acceptable choices )
 -i | --insert <arg>          Commit records in <arg> to database. 
 -t | --into <arg>            Choose a table to insert into when using --insert.
@@ -153,12 +153,12 @@ do
 			SELECT="$1"
 		;;
 
-		--limit)
+		-l|--limit)
 			DO_SEND_QUERY=true
 			shift
 			__LIM="$1"
 		;;
-		--having)
+		-h|--having)
 			DO_SEND_QUERY=true
 			shift
 			__HAVING="$1"
@@ -182,7 +182,7 @@ do
 			}
 		;;
 
-		--group-by)
+		-g|--group-by)
 			DO_SEND_QUERY=true
 			shift
 			__GROUP_BY="$1"
@@ -206,7 +206,7 @@ do
 			__TABLE="$1"
 		;; 
 
-		-im|--insert-from-mem)
+		--insert-from-mem)
 			DO_SEND_QUERY=true
 			DO_WRITE=true
 			DO_WRITE_FROM_MEM=true
@@ -274,7 +274,7 @@ do
 			[ -z "$CLAUSE" ] && CLAUSE="$1" || CLAUSE="$CLAUSE|$1"
 		;;
 
-		-sa|--show-as)
+		-a|--show-as)
 			shift
 			SERIALIZATION_TYPE="$1"
 		;;
