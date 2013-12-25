@@ -2,11 +2,14 @@
 dbm=/home/zaiah/projects/db_minishell CD=. {
  README.md
  db-minishell.sh
+ db-admin.sh
  dbms.vim
  genlibs.sh
  ms-build.sh
  ms-test-cli.sh
  ms-test.sh
+ test
+ unset.sh
  lib=lib {
   __.sh
   arrayify.sh
