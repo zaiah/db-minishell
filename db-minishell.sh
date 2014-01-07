@@ -838,47 +838,4 @@ then
 	}
 fi 
 # [ ORM ] END
-
-# Skip unset.
-# Plumbing
-unset __SQLITE__
-unset __TABLE
-
-# Clauses
-unset STMT
-unset CLAUSE
-unset __BETWEEN
-unset __GROUP_BY
-unset __HAVING
-unset __LIM
-unset __OFFSET
-unset __ORDER_BY
-
-# Queries
-unset SELECT
-unset SELECT_DISTINCT
-unset INSTALL_DIR
-unset QUERY_ARG
-unset SERIALIZATION_TYPE
-unset WRITE
-
-# Unset all flags.
-unset DO_ALTER
-unset DO_ALTER_NAME
-unset DO_DISTINCT
-unset DO_FROM
-unset DO_GET_COLUMNS
-unset DO_GET_DATATYPES
-unset DO_ID
-unset DO_INSTALL
-unset DO_REMOVE
-unset DO_SHOW_TABLES_AND_COLUMNS
-unset DO_SHOW_TABLES
-unset DO_UPDATE
-unset DO_VARDUMP
-unset DO_WHERE
-unset DO_WRITE_FROM_MEM
-unset ECHO_BACK
-unset VERBOSE
-
 # [ CODE ] END

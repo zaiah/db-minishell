@@ -282,31 +282,4 @@ done
 # test 
 [ ! -z $DO_VARDUMP ]	&& load_from_db_columns "$QUERY_ARG"
 # [ EXTENSIONS ] END
-
-# Skip unset.
-# Plumbing
-#unset __SQLITE__
-#unset __TABLE # --destroy-handle can kill both of these...
-
-# Unset all flags.
-unset DO_ALTER
-unset DO_ALTER_NAME
-unset DO_GET_COLUMNS
-unset DO_GET_DATATYPES
-unset DO_GET_SCHEMATA
-unset DO_SHOW_TABLES_AND_COLUMNS
-unset DO_SHOW_TABLES
-
-#... 
-unset RENAME_TO
-unset COLUMN_TO_ADD
-unset COLUMN_TO_REMOVE
-unset DROP_TABLE
-
-# General
-unset ECHO_BACK
-unset VERBOSE
-unset THROW_RAW 
-unset RAW_STMT
-
 # [ CODE ] END

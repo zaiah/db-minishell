@@ -173,8 +173,86 @@ do
 shift
 done
 
-
+# This is has got to go.
 DELIM=","
+
+
+# Unsets and locals.
+function do_unsets_and_locals() {
+[ -z "$1" ] && { 
+	printf "No arguments sent to do_unsets_and_locals()." > /dev/stderr
+	exit 1 
+}
+
+case "$1" in
+dbm)
+echo "STMT
+CLAUSE
+__BETWEEN
+__GROUP_BY
+__HAVING
+__LIM
+__OFFSET
+__ORDER_BY
+__ORDER_AD
+SET
+SELECT
+SELECT_DISTINCT
+QUERY_ARG
+SERIALIZATION_TYPE
+WRITE
+DO_SEND_QUERY
+DO_DISTINCT
+DO_FROM
+DO_ID
+DO_SELECT
+DO_REMOVE
+DO_UPDATE
+DO_VARDUMP
+DO_WHERE
+DO_WRITE_FROM_MEM
+VERBOSE
+ECHO_BACK
+THROW_RAW
+RAW_STMT"
+;;
+
+kv)
+printf '' > /dev/null
+;;
+
+dba)
+echo "DO_ALTER
+DO_ALTER_NAME
+DO_GET_COLUMNS
+DO_GET_DATATYPES
+DO_GET_SCHEMATA
+DO_SHOW_TABLES_AND_COLUMNS
+DO_SHOW_TABLES
+RENAME_TO
+COLUMN_TO_ADD
+COLUMN_TO_REMOVE
+DROP_TABLE
+ECHO_BACK
+VERBOSE
+THROW_RAW 
+RAW_STMT"
+;;
+
+*)
+	printf "Incorrect argument given to do_unsets_and_locals()." > /dev/stderr
+	exit 1
+;;
+esac
+}
+
+# 
+#do_unsets_and_locals orm | sed 's/^/\tlocal /g' | sed 's/$/=/g'
+
+# 
+#do_unsets_and_locals orm | sed 's/^/\tunset /g'
+#exit
+
 
 # Break up any omissions.
 [ ! -z "$OMIT_THESE" ] && {
@@ -277,6 +355,11 @@ then
 		printf "\t# Enable library.\n"
 		printf "\tDO_LIBRARIFY=true\n\n"
 
+		# Local variables.
+		printf "\t#Locals\n"
+		do_unsets_and_locals $(basename ${FILE%%.sh}) | sed 's/^/\tlocal /g' | sed 's/$/=/g'
+		printf "\n"
+
 		# Concatenate any external functions.
 		[ -z $NO_DEPS ] && {
 			for n in $BINDIR/{lib,minilib}/*
@@ -298,6 +381,10 @@ then
 		# Cycle through options and real code.
 		pick_off "$MKR_OPT" #workspace/opt
 		pick_off "$MKR_COD" #workspace/cod
+
+		# Unset local variables.
+		printf "\n\t#Unsets\n"
+		do_unsets_and_locals $(basename ${FILE%%.sh}) | sed 's/^/\tunset /g'
 
 		# Wrap up the function. 
 		printf "\n}\n"

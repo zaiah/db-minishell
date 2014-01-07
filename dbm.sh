@@ -527,47 +527,4 @@ then
 	}
 fi 
 # [ ORM ] END
-
-# Skip unset.
-# Plumbing
-#unset __SQLITE__
-#unset __TABLE  		# --destroy-handle can kill both of these...
-
-# Clauses
-unset STMT
-unset CLAUSE
-unset __BETWEEN
-unset __GROUP_BY
-unset __HAVING
-unset __LIM
-unset __OFFSET
-unset __ORDER_BY
-unset __ORDER_AD
-unset SET
-
-# Queries
-unset SELECT
-unset SELECT_DISTINCT
-unset QUERY_ARG
-unset SERIALIZATION_TYPE
-unset WRITE
-
-# Unset all flags.
-unset DO_SEND_QUERY
-unset DO_DISTINCT
-unset DO_FROM
-unset DO_ID
-unset DO_SELECT
-unset DO_REMOVE
-unset DO_UPDATE
-unset DO_VARDUMP
-unset DO_WHERE
-unset DO_WRITE_FROM_MEM
-
-# General
-unset VERBOSE
-unset ECHO_BACK
-unset THROW_RAW 
-unset RAW_STMT
-
 # [ CODE ] END
