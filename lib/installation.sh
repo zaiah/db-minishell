@@ -10,52 +10,67 @@
 # --undo          - Carry out the uninstall routine.
 #-----------------------------------------------------#
 installation() {
-	# A file to keep track of where files have been linked.
-	# Pretty sure PROGRAM_DIR is supposed to be INSTALL_DIR
-	if [ ! -z "${PROGRAM_DIR}" ] 
-	then
-		# Is it a directory?
-		if [ -d "${PROGRAM_DIR}" ] 
-		then 
-			if [ ! -O "$PROGRAM_DIR" ] 
-			then
-				echo "Program directory is not writeable.  "
-				echo "Exiting..." 
-				exit 1
-			else
-				SW_INSTALL="${PROGRAM_DIR}/INSTALL" 
-			fi
-		else
-			echo "Program directory does not exist." 
-			echo "Exiting..." 
-			exit 1
-		fi
-	# This is more than likely a single file.
-	else
-		SW_INSTALL="${BINDIR}/INSTALL"
-	fi
+	# Local variables. 
+	local SW_INSTALL=
+	local DO_INSTALL=
+	local DO_UNINSTALL=
+	local IIDIR=
+	local AS_NAME=
+	local LN_ARGS=
+	local LN_FILE=
+	local VERBOSE=
+	local SW_INSTALLS=
+
+	# Flags.
+	local SW_LN_FLAGS=
+	local UN_RM_FLAGS=
+	local SW_MKDIR_FLAGS=
+	local SW_CHMOD_FLAGS=
+
+	LIBPROGRAM="installation"
+	installation_usage() {
+	   STATUS="${1:-0}"
+	   echo "Usage: ./$LIBPROGRAM
+		[ -  ]
+	
+	-d | --do                     Run an install. 
+	-u | --undo                   Run an uninstall. 
+	-t | --to <arg>              	Install to a particular directory. 
+	-a | --as <arg>               Use a different name to link to.
+	                              (Currently can only be used on one file)
+	-t | --this <arg>             Choose a file to create a symbolic link to. 
+	-v | --verbose                Be verbose in output.
+	-h | --help                   Show this help and quit.
+	"
+	   exit $STATUS
+	}
 
 	# Need some flags to catch install dir, 
 	# arguments for what should be linked...
 	while [ $# -gt 0 ]
 	do
 		case $1 in
-			--do) 
-				EXECUTE_INSTALL_ROUTINE=true
+			-d|--do) 
+				DO_INSTALL=true
 			;;
-			--undo) 
-				EXECUTE_UNINSTALL_ROUTINE=true
+			-u|--undo) 
+				DO_UNINSTALL=true
 			;;
-			--to) 
+			-t|--to) 
 				shift
-				INITIAL_INSTALL_DIR=$1
+				IIDIR=$1
 			;;
-			--these|--this) 
+			-a|--as) 
+				shift
+				AS_NAME=$1
+			;;
+			-e|--these|--this) 
 				shift
 				LN_ARGS=$1
 			;;
 			-*)
-			break
+				printf "Unknown argument received: $1\n";
+				exit 1	
 			;;
 			*)
 				printf "This function must have the --to and "
@@ -66,6 +81,8 @@ installation() {
 		esac
 		shift
 	done
+
+	SW_INSTALL="${BINDIR}/INSTALL"
 
 	# Verbosity flags.
 	if [ ! -z $VERBOSE ] 
@@ -79,38 +96,46 @@ installation() {
 		SW_CHMOD_FLAGS='--'	
 	fi
 
-	# Install procedure.
-	if [ ! -z $EXECUTE_INSTALL_ROUTINE ]
-	then	
-		# Set initial dir if not set.
-		INITIAL_INSTALL_DIR="${INITIAL_INSTALL_DIR:-/usr/local/bin}"
 
-		# Die on no permissions if INITIAL_INSTALL_DIR is relative to /.
-		if [ -d "$INITIAL_INSTALL_DIR" ] && [ ! -O "$INITIAL_INSTALL_DIR" ] 
-		then
-			echo "Install directory is not writeable.  Exiting..." 
+	# Stop if the AS_NAME has been specified and 
+	# there is more than one argument.
+	[[ "$LN_ARGS" =~ ',' ]] && [ ! -z "$AS_NAME" ] && {
+		printf "Can't specify multiple files when using the --as argument."
+		exit 1
+	} > /dev/stderr
+
+
+	# Install procedure.
+	[ ! -z $DO_INSTALL ] && {
+		# Set initial dir if not set.
+		IIDIR="${IIDIR}"
+
+		# Die on no permissions if IIDIR is relative to /.
+		[ -d "$IIDIR" ] && [ ! -O "$IIDIR" ] && {
+			printf "Install directory is not writeable.  Exiting..." >/dev/stderr
 			exit 1
-		fi
+		}
 
 		# Assume this directory could be impractically long.
-		if [ ! -d "$INITIAL_INSTALL_DIR" ] 
-		then
-			mkdir $SW_MKDIR_FLAGS $INITIAL_INSTALL_DIR 2>/dev/null || SW_MKDIR_FAIL=true
-			if [ ! -z $SW_MKDIR_FAIL ] 
-			then 
-				echo "Could not create $INITIAL_INSTALL_DIR.  Exiting..." 
+		[ ! -d "$IIDIR" ] && {
+			# Failure is unacceptable.
+			local SW_MKDIR_FAIL=
+			mkdir $SW_MKDIR_FLAGS $IIDIR 2>/dev/null || SW_MKDIR_FAIL=true
+
+			[ ! -z $SW_MKDIR_FAIL ] && {
+				printf "Could not create $IIDIR.  Exiting..." >/dev/stderr 
 				exit 1
-			fi
-		fi
+			}	
+		}	
 
 		# Check for what type of file exists in $BINDIR
 		SW_INSTALLS=( $(printf $LN_ARGS | sed 's/,/ /g') )
-		declare -a SW_LOCATIONS
 
 		# Link all files.
 		for FILE in ${SW_INSTALLS[@]}
 		do
-			# If a shell script, did we use an extension? (goal is to have no .sh in /bin)
+			# If a shell script, did we use an extension? 
+			# No extensions should exist in the executable directory.
 			if [ -f "${BINDIR}/${FILE}.sh" ] 
 			then 
 				FILE="${BINDIR}/${FILE}.sh" 
@@ -119,43 +144,42 @@ installation() {
 				FILE="${BINDIR}/${FILE}" 
 			fi
 
-
-			# Link 
-			LNFILE="$(basename ${FILE%%.sh})" 
+			# Create a file. 
+			[ ! -z "$AS_NAME" ] && LN_FILE="$AS_NAME" || {
+				LN_FILE="$(basename ${FILE%%.sh})" 
+			}
 
 			# Quick test.
-			if [ -L "$LNFILE" ] 
-			then 
-				echo "${PROGRAM} already seems to be installed on this machine."
-				echo "You'll need to uninstall or remove those links first."
+			[ -L "$LN_FILE" ] && {
+				{
+				printf "${PROGRAM} already seems to be installed on this machine."
+					printf "You'll need to uninstall or remove those links first."
+				} > /dev/stderr 
 				exit
-			fi
-
+			}	
 
 			# Set x bit, and link.
 			[ ! -x "${FILE}" ] && chmod $SW_CHMOD_FLAGS 744 ${FILE}
-			ln $SW_LN_FLAGS ${FILE} ${INITIAL_INSTALL_DIR}/$LNFILE
+			ln $SW_LN_FLAGS ${FILE} ${IIDIR}/$LN_FILE
 
 
 			# Save the software install location to a file.
-			echo "${INITIAL_INSTALL_DIR}/$LNFILE" >> $SW_INSTALL
+			echo "${IIDIR}/$LN_FILE" >> $SW_INSTALL
 		done
+	}
 
 
 	# For what install would be complete without an uninstall?.
-	elif [ ! -z $EXECUTE_UNINSTALL_ROUTINE ]
-	then
-	
+	[ ! -z $DO_UNINSTALL ] && {
 		# Verbosity
-		if [ ! -z $VERBOSE ] 
-		then
-			UN_RM_FLAGS='-v --'	
-		else
-			UN_RM_FLAGS='--'	
-		fi
+		[ ! -z $VERBOSE ] && UN_RM_FLAGS='-v --' || UN_RM_FLAGS='--'
 
-		# Stop on problems accessing our install file (like it hasn't been created.)
-		[ ! -f $SW_INSTALL ] && echo "Can't access INSTALL file." && exit 1
+		# Stop on problems accessing our install file 
+		# (like it hasn't been created.)
+		[ ! -f $SW_INSTALL ] && {
+			printf "Can't access INSTALL file." >/dev/stderr
+			exit 1
+		}
 
 		# Read in the links and trash them.
 		while read line
@@ -165,5 +189,22 @@ installation() {
 
 		# Trash the file.
 		rm $UN_RM_FLAGS $SW_INSTALL
-	fi
+	}	
+
+	# Unsets
+	unset SW_INSTALL
+	unset DO_INSTALL
+	unset DO_UNINSTALL
+	unset IIDIR
+	unset AS_NAME
+	unset LN_ARGS
+	unset LN_FILE
+	unset VERBOSE
+	unset SW_INSTALLS
+
+	# Flags.
+	unset SW_LN_FLAGS
+	unset UN_RM_FLAGS
+	unset SW_MKDIR_FLAGS
+	unset SW_CHMOD_FLAGS
 }

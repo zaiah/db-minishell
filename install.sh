@@ -32,6 +32,7 @@ PROGRAM="dbm-install"
 # References to $SELF
 BINDIR="$(dirname "$(readlink -f $0)")"
 SELF="$(readlink -f $0)"
+source $BINDIR/lib/__.sh
 
 # usage - Show usage message and die with $STATUS
 usage() {
@@ -39,8 +40,6 @@ usage() {
    echo "Usage: ./$PROGRAM
 	[ -fciutvh ]
 
--f | --first-run              Run for the first time. 
--c | --config <dir>           Keep configuration in <dir>
 -i | --install <dir>          Install to <dir> 
 -u | --uninstall              Uninstall from <dir> 
 -t | --total                  Uninstall and get rid of sources in system. 
@@ -58,11 +57,10 @@ usage() {
 while [ $# -gt 0 ]
 do
    case "$1" in
-     -f|--first-run)
-         DO_FIRST_RUN=true
-      ;;
      -i|--install)
          DO_INSTALL=true
+			shift
+			INSTALL_DIR="$1"
       ;;
      -u|--uninstall)
          DO_UNINSTALL=true
@@ -86,22 +84,31 @@ do
 shift
 done
 
-# first_run
-[ ! -z $DO_FIRST_RUN ] && {
-   printf '' > /dev/null
-}
+# Eval
+eval_flags
 
 # install
 [ ! -z $DO_INSTALL ] && {
-   printf '' > /dev/null
+	[ -z "$INSTALL_DIR" ] && {
+		{
+			printf "No installation directory specified."
+			printf "Exiting..."
+		} > /dev/stderr
+	}
+
+	installation --do --these "dbkv,dbm,dba" --to "$INSTALL_DIR"
 }
 
 # uninstall
 [ ! -z $DO_UNINSTALL ] && {
-   printf '' > /dev/null
+  	installation --undo
 }
 
 # total
 [ ! -z $DO_TOTAL ] && {
-   printf '' > /dev/null
+	# Check the INSTALL file, to see if any files exist. 
+  	installation --undo
+  	
+	# Destroy the sources.
+	rm -rf $BINDIR 
 }
