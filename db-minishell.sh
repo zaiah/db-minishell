@@ -568,6 +568,7 @@ done
 for CTA in $(arrayify -d ',' --this "$COLUMN_TO_ADD") 
 do
 	[[ $CTA =~ "=" ]] && {
+		printf '' > /dev/null 
 	# arr would really help right now....
 	# for realllzzz
 	# take a quick break and switch it...

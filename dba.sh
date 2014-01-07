@@ -48,25 +48,26 @@ usage() {
 	[ - ]
 
 -d | --database <arg>        Choose a database to work with. 
-     --table <arg>           Set table <arg> as the active table. 
+-e | --table <arg>           Set table <arg> as the active table. 
 -c | --columns               List the columns of tables within database.
      --tables                List all tables in a database.
      --tables-and-columns    List both the columns and tables within a database.
--dt| --datatypes             List dataypes of all columns of all tables in database.
-     --schemata              List schema for all tables in database.
-     --of <arg>              Specifies a table to use to limit output of 
+-p | --datatypes             List datatypes of all columns of all tables 
+                             in database.
+-s | --schemata              List schema for all tables in database.
+-o | --of <arg>              Specifies a table to use to limit output of 
                              --columns and --datatypes commands.
      --set-id <colname>      Set the id column name ('id' is default 
 	                          column name.)
      --vardump               List results as a variable dump.
-     --rename <arg>          Rename table <arg>. (Use in concert with --to) 
+-n | --rename <arg>          Rename table <arg>. (Use in concert with --to) 
      --to <arg>              Name to rename table to. 
-     --alter <arg>           If \$__TABLE not set, use this to choose a table 
-                          to alter.
-     --adding <arg>          Add column(s) <arg> to a table.
-     --removing <arg>        Remove column(s) <arg> from a table.
-     --drop <arg>            Drop a table <arg> from a database.
-     --raw <arg>             Send this raw statement onto the SQLite database. 
+-t | --alter <arg>           If \$__TABLE not set, use this to choose a table 
+                             to alter.
+-a | --adding <arg>          Add column(s) <arg> to a table.
+-r | --removing <arg>        Remove column(s) <arg> from a table.
+-x | --drop <arg>            Drop a table <arg> from a database.
+-w | --raw <arg>             Send this raw statement onto the SQLite database. 
      --echo                  Echo back SQL statements for debugging.
 -v | --verbose               Be verbose in output.
 -h | --help                  Show this help and quit.
@@ -130,7 +131,7 @@ do
 			DO_GET_COLUMNS=true
 		;;
 
-		-dt|--datatypes)
+		-p|--datatypes)
 			DO_GET_DATATYPES=true
 		;;
 
@@ -142,11 +143,11 @@ do
 			DO_SHOW_TABLES_AND_COLUMNS=true
 		;;
 
-		--schemata)
+		-s|--schemata)
 			DO_GET_SCHEMATA=true
 		;;
 
-		--of)
+		-o|--of)
 			shift
 			__TABLE="$1"
 		;;

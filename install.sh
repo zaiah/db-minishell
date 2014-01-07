@@ -90,6 +90,7 @@ eval_flags
 # install
 [ ! -z $DO_INSTALL ] && {
 	[ -z "$INSTALL_DIR" ] && {
+<<<<<<< HEAD
 		{
 			printf "No installation directory specified."
 			printf "Exiting..."
