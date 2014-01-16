@@ -31,7 +31,7 @@ sqlite3 "some-db"
 sqlite> select * from tony where x=y;
 sqlite> delete xid from tony where category='big paper' and color='green';
 </pre>
-is not the greatest way to go about developing an application for the database.   While there are plenty of pretty decent scripts out there (even some going so far as to be built into your IDE), there isn't a whole lot out thereright now that solves this rather simple problem on your command line.
+is not the greatest way to go about developing an application for the database.   While there are plenty of pretty decent scripts out there that handle stuff like this (even some going so far as to be built into your IDE), there aren't really a whole lot out there right now that solve this rather simple problem from your command line.
 
 The hope is to see this thing get embedded into simple scripts when needed, maybe making Bash or some other shell variant a little more useful for your system administration needs.
 
