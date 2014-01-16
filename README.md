@@ -1,68 +1,44 @@
-# db_minishell
+# db-minishell
 
-A library for parsing through SQLite3 databases with Bash.
+A command-line tool and library for parsing through SQLite3 databases via the command-line.
 
-# Usage
 
 # Files
 
-- db-minishell.sh
-	Wraps the command line interface for quicker development.
+- dbms-orm.sh
+	Contains just functions necessary for grabbing and manipulating the data within some database.
+
+- dbms-admin.sh
+	Contains functions necessary for administrative tasks, such as creating tables, altering tables, getting the schema of a database, etc.
+
+- ms-build.sh
+	Builds a library out of this minishell.
+
+- ms-test.sh
+	Builds some tests for minishell.
+
 
 - library.sh
 	An embeddable library, omitting `usage` function and unnecessary options.  
 	Also allows one to just include the library in a program.
 
 
-x -d | database <arg>       
-x -s | select <arg>         
-x     select-all           
-x     distinct <arg>       
-x     limit <arg>          
-     offset <arg>         
-     having <arg>         
-     order-by [asc|desc]  
--b | between <arg>       
-                        
--f | from <arg>           
--w | where <arg>           Supply a
--o | or <arg>              Supply an
--z | id <arg>             
--sa| show-as <arg>        
+# Why
 
+I'm sure I'm not alone in thinking that invoking:
+<pre>
+sqlite3 "some-db"
+sqlite> select * from tony where x=y;
+sqlite> delete xid from tony where category='big paper' and color='green';
+</pre>
+is not the greatest way to go about developing an application for the database.   While there are plenty of pretty decent scripts out there (even some going so far as to be built into your IDE), there isn't a whole lot out thereright now that solves this rather simple problem on your command line.
 
-Administrative Functions:
--c | columns              
--dt| datatypes            
-     schemata             
-     of <arg>             
-     tables               
-     set-id <colname>     
-     vardump              
-
-
-Update Functions:
--i | insert <arg>         
--t | into <arg>           
-     insert-from-mem      
--u | update <arg>         
--e | set <arg>            
--r | delete               
--x | remove-where <arg>   
-
-
-General Options:
-     librarify            
-     libname <name>       
-     install <dir>        
+The hope is to see this thing get embedded into simple scripts when needed, maybe making Bash or some other shell variant a little more useful for your system administration needs.
 
 
 # To do / Good Ideas
-Move this to a transaction based system for speed.  Only one invocation needed and close the program when totally done.
+- Move this to a transaction based system for speed.  Only one invocation needed and close the program when totally done.
 
-What if I want to do mass updates?  Besides looped invocation (slow as hell) how can I generate a GIANT statement.
+- What if I want to do mass updates?  Besides looped invocation (slow as hell) how can I generate a GIANT statement?
 
---set / --use 
-	Set by sending variables to temporary file and loading. 
-	or using eval to load to memory, this way may mean I'll have to be careful about globals again...
-	temporary file (or eval with some crazy no way in hell this would ever exist varname) can do some stuff...
+- Man pages and better documentation are on the way.
